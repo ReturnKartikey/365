@@ -10,7 +10,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { Settings, ExternalLink, Share2, Sparkles } from 'lucide-react-native';
+import { Settings, ExternalLink, Share2, Sparkles, Heart } from 'lucide-react-native';
 import { useTheme } from '../../src/theme/ThemeContext';
 import { useAuth } from '../../src/services/AuthContext';
 import { SongDataService } from '../../src/services/SongDataService';
@@ -26,6 +26,7 @@ export default function TodayScreen() {
 
   const [todayData, setTodayData] = useState<DailySong>(SongDataService.getTodaySong());
   const [isNewRelease, setIsNewRelease] = useState(true);
+  const [isLiked, setIsLiked] = useState(false);
 
   useEffect(() => {
     const song = SongDataService.getTodaySong();
@@ -138,10 +139,11 @@ export default function TodayScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* Hero Album Artwork with Reveal Animation */}
+        {/* Hero Album Artwork with Reveal Animation and Double-Tap Like */}
         <AlbumArtHero
           artworkUrl={todayData.song.artworkUrl}
           isNewRelease={isNewRelease}
+          onLike={() => setIsLiked(true)}
         />
 
         {/* Song & Artist Information */}
@@ -194,6 +196,11 @@ export default function TodayScreen() {
                 @{todayData.submitterUsername}
               </Text>
             </Text>
+            {isLiked && (
+              <View style={styles.likedBadge}>
+                <Heart size={14} color="#FF3B30" fill="#FF3B30" />
+              </View>
+            )}
           </View>
         </View>
 
@@ -298,6 +305,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     marginTop: 2,
+  },
+  likedBadge: {
+    marginLeft: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   attributionText: {
     fontSize: 13,

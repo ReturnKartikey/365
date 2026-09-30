@@ -10,7 +10,7 @@ import Animated, {
   Easing,
 } from 'react-native-reanimated';
 import { useTheme } from '../theme/ThemeContext';
-import { Disc3, Plus, History, LucideIcon } from 'lucide-react-native';
+import { Disc3, Plus, RotateCcw, LucideIcon } from 'lucide-react-native';
 
 export type TabKey = 'today' | 'submit' | 'history';
 
@@ -41,7 +41,7 @@ const M3NavItem: React.FC<NavItemProps> = ({ tabKey, label, icon: IconComponent,
   // Dedicated motion values for icons
   const iconRotation = useSharedValue(0);
   const iconPopScale = useSharedValue(1);
-  const iconTranslateY = useSharedValue(0);
+  const iconOpacity = useSharedValue(1);
 
   useEffect(() => {
     if (isSelected) {
@@ -50,22 +50,22 @@ const M3NavItem: React.FC<NavItemProps> = ({ tabKey, label, icon: IconComponent,
       iconScale.value = withSpring(1.08, { damping: 12, stiffness: 220 });
 
       if (tabKey === 'today') {
+        // Vinyl disc spin
         iconRotation.value = withSpring(iconRotation.value + 90, { damping: 12, stiffness: 180 });
       } else if (tabKey === 'submit') {
-        iconRotation.value = withSpring(iconRotation.value + 90, { damping: 11, stiffness: 210 });
+        // Plus "invoke / appear" animation (no rotation)
         iconPopScale.value = withSequence(
-          withTiming(1.22, { duration: 130, easing: Easing.out(Easing.cubic) }),
-          withSpring(1.0, { damping: 10, stiffness: 240 })
+          withTiming(0.3, { duration: 70 }),
+          withSpring(1.3, { damping: 10, stiffness: 250 }),
+          withSpring(1.0, { damping: 12, stiffness: 200 })
+        );
+        iconOpacity.value = withSequence(
+          withTiming(0.3, { duration: 70 }),
+          withTiming(1, { duration: 160 })
         );
       } else if (tabKey === 'history') {
-        iconRotation.value = withSequence(
-          withTiming(-36, { duration: 130, easing: Easing.out(Easing.quad) }),
-          withSpring(0, { damping: 9, stiffness: 220 })
-        );
-        iconTranslateY.value = withSequence(
-          withTiming(-3, { duration: 100 }),
-          withSpring(0, { damping: 10, stiffness: 240 })
-        );
+        // Arrow circle rotates along its circular path
+        iconRotation.value = withSpring(iconRotation.value - 360, { damping: 14, stiffness: 140 });
       }
     } else {
       indicatorScaleX.value = withTiming(0.4, { duration: 150 });
@@ -86,10 +86,8 @@ const M3NavItem: React.FC<NavItemProps> = ({ tabKey, label, icon: IconComponent,
     if (iconRotation.value !== 0) {
       transforms.push({ rotate: `${iconRotation.value}deg` });
     }
-    if (iconTranslateY.value !== 0) {
-      transforms.push({ translateY: iconTranslateY.value });
-    }
     return {
+      opacity: iconOpacity.value,
       transform: transforms,
     };
   });
@@ -107,22 +105,19 @@ const M3NavItem: React.FC<NavItemProps> = ({ tabKey, label, icon: IconComponent,
       // Vinyl disc spin
       iconRotation.value = withSpring(iconRotation.value + 140, { damping: 12, stiffness: 160 });
     } else if (tabKey === 'submit') {
-      // 90° twist and elastic pop
-      iconRotation.value = withSpring(iconRotation.value + 90, { damping: 10, stiffness: 220 });
+      // Plus "invoke / appear" burst (pure bloom/materialize, no rotation)
       iconPopScale.value = withSequence(
-        withTiming(1.26, { duration: 130, easing: Easing.out(Easing.cubic) }),
-        withSpring(1.0, { damping: 9, stiffness: 240 })
+        withTiming(0.35, { duration: 70 }),
+        withSpring(1.32, { damping: 9, stiffness: 260 }),
+        withSpring(1.0, { damping: 12, stiffness: 220 })
+      );
+      iconOpacity.value = withSequence(
+        withTiming(0.4, { duration: 70 }),
+        withTiming(1, { duration: 180 })
       );
     } else if (tabKey === 'history') {
-      // Mechanical clock rewind recoil tick
-      iconRotation.value = withSequence(
-        withTiming(-42, { duration: 140, easing: Easing.out(Easing.quad) }),
-        withSpring(0, { damping: 8, stiffness: 200 })
-      );
-      iconTranslateY.value = withSequence(
-        withTiming(-4, { duration: 110 }),
-        withSpring(0, { damping: 10, stiffness: 240 })
-      );
+      // Arrow circle smooth rewind spin along its path
+      iconRotation.value = withSpring(iconRotation.value - 360, { damping: 13, stiffness: 150 });
     }
     onPress();
   };
@@ -180,7 +175,7 @@ export const M3NavigationBar: React.FC<M3NavigationBarProps> = ({ currentTab, on
   const tabs: Array<{ key: TabKey; label: string; icon: LucideIcon }> = [
     { key: 'today', label: 'Today', icon: Disc3 },
     { key: 'submit', label: 'Submit', icon: Plus },
-    { key: 'history', label: 'History', icon: History },
+    { key: 'history', label: 'History', icon: RotateCcw },
   ];
 
   return (

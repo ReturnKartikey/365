@@ -5,9 +5,10 @@ import { useRouter } from 'expo-router';
 import { useTheme } from '../src/theme/ThemeContext';
 import { useAuth } from '../src/services/AuthContext';
 import { M3Button } from '../src/components/M3Button';
+import { GoogleIcon } from '../src/components/GoogleIcon';
 
 export default function WelcomeScreen() {
-  const { colors, typography } = useTheme();
+  const { colors, typography, shapes } = useTheme();
   const { signInWithGoogle, signInAsGuest } = useAuth();
   const router = useRouter();
   const [loadingGoogle, setLoadingGoogle] = useState(false);
@@ -79,28 +80,49 @@ export default function WelcomeScreen() {
           </Text>
         </View>
 
-        {/* Minimal Editorial Divider / Quote */}
-        <View style={styles.manifestoSection}>
-          <View style={[styles.rule, { backgroundColor: colors.outlineVariant }]} />
+        {/* Editorial Ritual Card */}
+        <View
+          style={[
+            styles.ritualCard,
+            {
+              backgroundColor: colors.surfaceContainerLow,
+              borderColor: colors.outlineVariant,
+              borderRadius: shapes.extraLarge,
+            },
+          ]}
+        >
+          <View style={styles.ritualHeaderRow}>
+            <View style={[styles.pulseDot, { backgroundColor: colors.primary }]} />
+            <Text
+              style={[
+                styles.ritualTag,
+                {
+                  color: colors.primary,
+                  fontFamily: typography.labelSmall.fontFamilySans,
+                },
+              ]}
+            >
+              DAILY DROP AT 7:00 PM
+            </Text>
+          </View>
           <Text
             style={[
               styles.manifestoText,
               {
-                color: colors.onSurfaceVariant,
+                color: colors.onSurface,
                 fontFamily: typography.bodyMedium.fontFamilySans,
               },
             ]}
           >
-            A collective listening ritual. Chosen from listener submissions.
-            No endless feeds, no algorithms, no distractions.
+            One song discovered and submitted by the community. No algorithmic feeds or endless scrolls—just one track for the entire world to experience together today.
           </Text>
-          <View style={[styles.rule, { backgroundColor: colors.outlineVariant }]} />
         </View>
 
         {/* Primary Action Buttons */}
         <View style={styles.actionsSection}>
           <M3Button
             label="Continue with Google"
+            icon={<GoogleIcon size={19} color={colors.onPrimary} />}
             onPress={handleGoogleSignIn}
             loading={loadingGoogle}
             size="large"
@@ -151,14 +173,26 @@ const styles = StyleSheet.create({
     marginTop: 8,
     fontWeight: '500',
   },
-  manifestoSection: {
-    paddingVertical: 24,
-  },
-  rule: {
-    height: 1,
-    width: '100%',
+  ritualCard: {
+    padding: 20,
+    borderWidth: 1,
     marginVertical: 18,
-    opacity: 0.6,
+  },
+  ritualHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 10,
+    gap: 8,
+  },
+  pulseDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  ritualTag: {
+    fontSize: 11,
+    letterSpacing: 1.4,
+    fontWeight: '700',
   },
   manifestoText: {
     fontSize: 14,

@@ -12,22 +12,37 @@ interface LoginVinylDiscProps {
   primaryColor: string;
 }
 
-export const LoginVinylDisc: React.FC<LoginVinylDiscProps> = ({ primaryColor }) => {
-  const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = useWindowDimensions();
+// Inject smooth continuous CSS spin for web
+if (Platform.OS === 'web' && typeof document !== 'undefined') {
+  if (!document.getElementById('vinyl-spin-keyframes')) {
+    const styleEl = document.createElement('style');
+    styleEl.id = 'vinyl-spin-keyframes';
+    styleEl.textContent = `
+      @keyframes vinylContinuousSpin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+      }
+    `;
+    document.head.appendChild(styleEl);
+  }
+}
 
-  // Responsive diameter: smaller and elegant
-  const discSize = Math.max(290, Math.min(SCREEN_WIDTH * 0.78, 350));
+export const LoginVinylDisc: React.FC<LoginVinylDiscProps> = ({ primaryColor }) => {
+  const { width: SCREEN_WIDTH } = useWindowDimensions();
+
+  // Responsive diameter matching reference image
+  const discSize = Math.max(340, Math.min(SCREEN_WIDTH * 0.92, 420));
   const discRadius = discSize / 2;
-  const labelSize = discSize * 0.34;
+  const labelSize = discSize * 0.32;
   const spindleSize = discSize * 0.08;
 
-  // Ultra-gentle ambient rotation (60s full cycle)
+  // Slow, smooth ambient rotation (24s per revolution)
   const rotation = useSharedValue(0);
 
   useEffect(() => {
     rotation.value = withRepeat(
       withTiming(360, {
-        duration: 60000,
+        duration: 24000,
         easing: Easing.linear,
       }),
       -1,
@@ -38,6 +53,13 @@ export const LoginVinylDisc: React.FC<LoginVinylDiscProps> = ({ primaryColor }) 
   const animatedSpin = useAnimatedStyle(() => ({
     transform: [{ rotate: `${rotation.value}deg` }],
   }));
+
+  const webSpinStyle =
+    Platform.OS === 'web'
+      ? ({
+          animation: 'vinylContinuousSpin 24s linear infinite',
+        } as any)
+      : null;
 
   // Concentric groove ring radii
   const grooves = [
@@ -51,8 +73,9 @@ export const LoginVinylDisc: React.FC<LoginVinylDiscProps> = ({ primaryColor }) 
         {
           width: discSize + 60,
           height: discSize + 60,
-          right: -discSize * 0.28,
-          top: -24,
+          // Pushed further right so center label stays on the far right and never touches text
+          right: -discSize * 0.44,
+          top: -36,
         },
       ]}
       pointerEvents="none"
@@ -70,45 +93,7 @@ export const LoginVinylDisc: React.FC<LoginVinylDiscProps> = ({ primaryColor }) 
         ]}
       />
 
-      {/* 2. Planetary Orbit Arc & Glowing Satellite Dot */}
-      {Platform.OS === 'web' ? (
-        <svg
-          width={discSize + 40}
-          height={discSize + 40}
-          viewBox={`0 0 ${discSize + 40} ${discSize + 40}`}
-          style={{ position: 'absolute', left: 0, top: 0, overflow: 'visible' }}
-        >
-          {/* Subtle curved orbital path */}
-          <path
-            d={`M ${discSize * 0.12} ${discSize * 0.46} A ${discRadius * 1.15} ${discRadius * 1.15} 0 0 1 ${discRadius * 0.95} ${discSize * 0.04}`}
-            fill="none"
-            stroke="rgba(232, 162, 130, 0.32)"
-            strokeWidth="1.2"
-            strokeDasharray="4 2"
-          />
-          {/* Glowing Satellite Planet Dot */}
-          <circle
-            cx={discSize * 0.30}
-            cy={discSize * 0.19}
-            r="5"
-            fill={primaryColor}
-            filter="drop-shadow(0px 0px 6px rgba(232, 162, 130, 0.8))"
-          />
-        </svg>
-      ) : (
-        <View
-          style={[
-            styles.nativeOrbitDot,
-            {
-              backgroundColor: primaryColor,
-              left: discSize * 0.28,
-              top: discSize * 0.18,
-            },
-          ]}
-        />
-      )}
-
-      {/* 3. The Main Vinyl Record with Grooves and Sheen */}
+      {/* 2. The Main Vinyl Record with Grooves and Sheen (Slowly Spinning) */}
       <Animated.View
         style={[
           styles.discBody,
@@ -118,9 +103,10 @@ export const LoginVinylDisc: React.FC<LoginVinylDiscProps> = ({ primaryColor }) 
             borderRadius: discRadius,
           },
           animatedSpin,
+          webSpinStyle,
         ]}
       >
-        {/* Subtle Vinyl Grooves */}
+        {/* Vinyl Grooves */}
         {grooves.map((ratio, idx) => {
           const r = discRadius * ratio;
           return (
@@ -144,7 +130,7 @@ export const LoginVinylDisc: React.FC<LoginVinylDiscProps> = ({ primaryColor }) 
           );
         })}
 
-        {/* 4. Realistic Conical Sheen / Anisotropic Light Reflection (Web) */}
+        {/* Realistic Conical Sheen / Anisotropic Light Reflection (Web) */}
         {Platform.OS === 'web' && (
           <View
             style={[
@@ -158,7 +144,7 @@ export const LoginVinylDisc: React.FC<LoginVinylDiscProps> = ({ primaryColor }) 
           />
         )}
 
-        {/* 5. Center Label Disc in Material You Primary Tone */}
+        {/* Center Label Disc in Material You Primary Tone */}
         <View
           style={[
             styles.centerLabel,
@@ -194,7 +180,7 @@ export const LoginVinylDisc: React.FC<LoginVinylDiscProps> = ({ primaryColor }) 
             ]}
           />
 
-          {/* 6. Spindle Hole */}
+          {/* Spindle Hole */}
           <View
             style={[
               styles.spindleHole,
@@ -234,13 +220,6 @@ const styles = StyleSheet.create({
         shadowRadius: 40,
       },
     }),
-  },
-  nativeOrbitDot: {
-    position: 'absolute',
-    width: 9,
-    height: 9,
-    borderRadius: 4.5,
-    zIndex: 3,
   },
   discBody: {
     backgroundColor: '#121010',

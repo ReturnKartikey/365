@@ -83,19 +83,19 @@ export default function WelcomeScreen() {
             </Text>
           </View>
 
-          {/* Pure Manifesto description text (no bullet points, no card border, no 7:00 PM drop) */}
+          {/* Clean human-crafted manifesto (no em-dash, no AI fluff) */}
           <Text
             style={[
               styles.manifestoText,
               {
                 color: colors.onSurfaceVariant,
                 fontFamily: typography.bodyMedium.fontFamilySans,
-                maxWidth: Math.min(290, SCREEN_WIDTH * 0.68),
+                maxWidth: Math.min(280, SCREEN_WIDTH * 0.68),
               },
             ]}
           >
-            Discover one song daily, chosen by our community. No algorithms, no endless scrolling —
-            just one track for the entire world to experience together today.
+            Discover one song daily, chosen by listeners. No algorithms, no endless scrolling. Just
+            one track to experience together today.
           </Text>
         </View>
 

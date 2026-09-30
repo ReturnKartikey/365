@@ -6,6 +6,7 @@ import Animated, {
   useAnimatedStyle,
   withSpring,
   withTiming,
+  withSequence,
   Easing,
 } from 'react-native-reanimated';
 import { useTheme } from '../theme/ThemeContext';
@@ -36,15 +37,35 @@ const M3NavItem: React.FC<NavItemProps> = ({ tabKey, label, icon: IconComponent,
   const indicatorOpacity = useSharedValue(isSelected ? 1 : 0);
   const iconScale = useSharedValue(isSelected ? 1 : 0.94);
   const itemPressScale = useSharedValue(1);
-  const cdRotation = useSharedValue(0);
+
+  // Dedicated motion values for icons
+  const iconRotation = useSharedValue(0);
+  const iconPopScale = useSharedValue(1);
+  const iconTranslateY = useSharedValue(0);
 
   useEffect(() => {
     if (isSelected) {
       indicatorScaleX.value = withSpring(1, { damping: 14, stiffness: 180 });
       indicatorOpacity.value = withTiming(1, { duration: 200, easing: Easing.out(Easing.cubic) });
       iconScale.value = withSpring(1.08, { damping: 12, stiffness: 220 });
+
       if (tabKey === 'today') {
-        cdRotation.value = withSpring(cdRotation.value + 90, { damping: 12, stiffness: 180 });
+        iconRotation.value = withSpring(iconRotation.value + 90, { damping: 12, stiffness: 180 });
+      } else if (tabKey === 'submit') {
+        iconRotation.value = withSpring(iconRotation.value + 90, { damping: 11, stiffness: 210 });
+        iconPopScale.value = withSequence(
+          withTiming(1.22, { duration: 130, easing: Easing.out(Easing.cubic) }),
+          withSpring(1.0, { damping: 10, stiffness: 240 })
+        );
+      } else if (tabKey === 'history') {
+        iconRotation.value = withSequence(
+          withTiming(-36, { duration: 130, easing: Easing.out(Easing.quad) }),
+          withSpring(0, { damping: 9, stiffness: 220 })
+        );
+        iconTranslateY.value = withSequence(
+          withTiming(-3, { duration: 100 }),
+          withSpring(0, { damping: 10, stiffness: 240 })
+        );
       }
     } else {
       indicatorScaleX.value = withTiming(0.4, { duration: 150 });
@@ -59,9 +80,14 @@ const M3NavItem: React.FC<NavItemProps> = ({ tabKey, label, icon: IconComponent,
   }));
 
   const animatedIconStyle = useAnimatedStyle(() => {
-    const transforms: any[] = [{ scale: iconScale.value * itemPressScale.value }];
-    if (tabKey === 'today') {
-      transforms.push({ rotate: `${cdRotation.value}deg` });
+    const transforms: any[] = [
+      { scale: iconScale.value * itemPressScale.value * iconPopScale.value },
+    ];
+    if (iconRotation.value !== 0) {
+      transforms.push({ rotate: `${iconRotation.value}deg` });
+    }
+    if (iconTranslateY.value !== 0) {
+      transforms.push({ translateY: iconTranslateY.value });
     }
     return {
       transform: transforms,
@@ -78,7 +104,25 @@ const M3NavItem: React.FC<NavItemProps> = ({ tabKey, label, icon: IconComponent,
 
   const handleItemPress = () => {
     if (tabKey === 'today') {
-      cdRotation.value = withSpring(cdRotation.value + 140, { damping: 12, stiffness: 160 });
+      // Vinyl disc spin
+      iconRotation.value = withSpring(iconRotation.value + 140, { damping: 12, stiffness: 160 });
+    } else if (tabKey === 'submit') {
+      // 90° twist and elastic pop
+      iconRotation.value = withSpring(iconRotation.value + 90, { damping: 10, stiffness: 220 });
+      iconPopScale.value = withSequence(
+        withTiming(1.26, { duration: 130, easing: Easing.out(Easing.cubic) }),
+        withSpring(1.0, { damping: 9, stiffness: 240 })
+      );
+    } else if (tabKey === 'history') {
+      // Mechanical clock rewind recoil tick
+      iconRotation.value = withSequence(
+        withTiming(-42, { duration: 140, easing: Easing.out(Easing.quad) }),
+        withSpring(0, { damping: 8, stiffness: 200 })
+      );
+      iconTranslateY.value = withSequence(
+        withTiming(-4, { duration: 110 }),
+        withSpring(0, { damping: 10, stiffness: 240 })
+      );
     }
     onPress();
   };

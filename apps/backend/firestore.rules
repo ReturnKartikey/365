@@ -1,0 +1,84 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() && (
+        request.auth.token.admin == true ||
+        request.auth.token.email.matches('.*@ritual365\\.admin')
+      );
+    }
+
+    function isNotBanned() {
+      return isAuthenticated() &&
+        (!exists(/databases/$(database)/documents/users/$(request.auth.uid)) ||
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isBanned != true);
+    }
+
+    // Users Collection
+    match /users/{userId} {
+      allow read: if true;
+      allow create: if isAuthenticated() && request.auth.uid == userId;
+      allow update: if isOwner(userId) &&
+        (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['isBanned'])) ||
+        isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    // Songs Catalog Collection
+    match /songs/{songId} {
+      allow read: if true;
+      allow create: if isAuthenticated() && isNotBanned();
+      allow update, delete: if isAdmin();
+    }
+
+    // Submissions Queue Collection
+    match /submissions/{submissionId} {
+      allow read: if isAdmin() || (isAuthenticated() && resource.data.userId == request.auth.uid);
+      allow create: if isAuthenticated() &&
+        isNotBanned() &&
+        request.resource.data.userId == request.auth.uid &&
+        request.resource.data.status == 'queued';
+      allow update: if isAdmin() || (
+        isAuthenticated() &&
+        resource.data.userId == request.auth.uid &&
+        request.resource.data.status in ['removed']
+      );
+      allow delete: if isAdmin();
+    }
+
+    // Daily Songs Collection
+    match /dailySongs/{date} {
+      // Anyone can read published daily songs; admins can see scheduled songs
+      allow read: if resource.data.status == 'published' || isAdmin();
+      allow write: if isAdmin();
+    }
+
+    // Notifications Collection
+    match /notifications/{notificationId} {
+      allow read, update: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      allow create, delete: if isAdmin();
+    }
+
+    // Reports Collection
+    match /reports/{reportId} {
+      allow create: if isAuthenticated();
+      allow read, update, delete: if isAdmin();
+    }
+
+    // App Configuration Collection
+    match /config/{configDoc} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+  }
+}

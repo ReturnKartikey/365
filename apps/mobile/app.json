@@ -1,0 +1,33 @@
+{
+  "expo": {
+    "name": "365",
+    "slug": "365",
+    "scheme": "three-six-five",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "splash": {
+      "backgroundColor": "#121316",
+      "resizeMode": "contain"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.ritual365.app"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#121316"
+      },
+      "package": "com.ritual365.app"
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "single"
+    },
+    "plugins": [
+      "expo-router"
+    ]
+  }
+}

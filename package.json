@@ -1,0 +1,19 @@
+{
+  "name": "365-monorepo",
+  "version": "1.0.0",
+  "private": true,
+  "description": "One song. Every day. Mobile-first daily music ritual.",
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "scripts": {
+    "test": "npm run test --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "lint": "npm run lint --workspaces --if-present",
+    "build": "npm run build --workspaces --if-present"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.5"
+  }
+}

@@ -15,8 +15,8 @@ interface LoginVinylDiscProps {
 export const LoginVinylDisc: React.FC<LoginVinylDiscProps> = ({ primaryColor }) => {
   const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = useWindowDimensions();
 
-  // Responsive diameter matching reference image
-  const discSize = Math.max(380, Math.min(SCREEN_WIDTH * 1.05, 480));
+  // Responsive diameter: smaller and elegant
+  const discSize = Math.max(290, Math.min(SCREEN_WIDTH * 0.78, 350));
   const discRadius = discSize / 2;
   const labelSize = discSize * 0.34;
   const spindleSize = discSize * 0.08;
@@ -51,8 +51,8 @@ export const LoginVinylDisc: React.FC<LoginVinylDiscProps> = ({ primaryColor }) 
         {
           width: discSize + 60,
           height: discSize + 60,
-          right: -discSize * 0.34,
-          top: Math.max(20, SCREEN_HEIGHT * 0.04),
+          right: -discSize * 0.28,
+          top: -24,
         },
       ]}
       pointerEvents="none"

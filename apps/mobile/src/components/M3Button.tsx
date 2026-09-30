@@ -16,7 +16,6 @@ export interface M3ButtonProps {
   onPress: () => void;
   variant?: 'filled' | 'tonal' | 'outlined' | 'text';
   icon?: React.ReactNode;
-  iconPosition?: 'inline' | 'left';
   disabled?: boolean;
   loading?: boolean;
   style?: StyleProp<ViewStyle>;
@@ -29,7 +28,6 @@ export const M3Button: React.FC<M3ButtonProps> = ({
   onPress,
   variant = 'filled',
   icon,
-  iconPosition = 'inline',
   disabled = false,
   loading = false,
   style,
@@ -64,8 +62,6 @@ export const M3Button: React.FC<M3ButtonProps> = ({
     borderColor = colors.outlineVariant;
   }
 
-  const isIconLeft = iconPosition === 'left';
-
   return (
     <TouchableOpacity
       activeOpacity={0.82}
@@ -88,22 +84,16 @@ export const M3Button: React.FC<M3ButtonProps> = ({
       {loading ? (
         <ActivityIndicator color={textColor} size="small" />
       ) : (
-        <>
-          {icon && isIconLeft && (
-            <View style={styles.leftIconWrapper}>
-              {icon}
-            </View>
-          )}
-          {icon && !isIconLeft && icon}
+        <View style={styles.contentRow}>
+          {icon && <View style={styles.iconContainer}>{icon}</View>}
           <Text
             style={[
               {
                 color: textColor,
-                fontSize: isLarge ? 16 : typography.labelLarge.fontSize,
+                fontSize: isLarge ? 15 : typography.labelLarge.fontSize,
                 fontFamily: typography.labelLarge.fontFamilySans,
                 fontWeight: '600',
                 letterSpacing: 0.3,
-                marginLeft: icon && !isIconLeft ? 8 : 0,
                 textAlign: 'center',
               },
               textStyle,
@@ -111,7 +101,7 @@ export const M3Button: React.FC<M3ButtonProps> = ({
           >
             {label}
           </Text>
-        </>
+        </View>
       )}
     </TouchableOpacity>
   );
@@ -119,17 +109,17 @@ export const M3Button: React.FC<M3ButtonProps> = ({
 
 const styles = StyleSheet.create({
   button: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  contentRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    position: 'relative',
   },
-  leftIconWrapper: {
-    position: 'absolute',
-    left: 20,
-    top: 0,
-    bottom: 0,
-    justifyContent: 'center',
+  iconContainer: {
+    marginRight: 10,
     alignItems: 'center',
+    justifyContent: 'center',
   },
 });

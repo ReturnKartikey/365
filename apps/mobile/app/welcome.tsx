@@ -103,8 +103,7 @@ export default function WelcomeScreen() {
         <View style={styles.actionsSection}>
           <M3Button
             label="Continue with Google"
-            icon={<GoogleIcon size={20} color={colors.onPrimary} />}
-            iconPosition="left"
+            icon={<GoogleIcon size={19} color={colors.onPrimary} />}
             onPress={handleGoogleSignIn}
             loading={loadingGoogle}
             size="large"

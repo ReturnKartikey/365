@@ -225,10 +225,17 @@ export default function SubmitScreen() {
           'Your submission is now in the 365 listening pool. Songs are selected daily for the entire community.',
       });
     } else {
+      const isAlreadySubmitted =
+        result.errorCode === 'ACTIVE_SUBMISSION_EXISTS' ||
+        result.error?.includes('active submission') ||
+        result.error?.includes('365 queue');
+
       setStatusMessage({
         type: 'error',
-        title: 'Submission Unavailable',
-        description: result.error || 'Unable to submit this song.',
+        title: isAlreadySubmitted ? 'Please Wait' : 'Submission Unavailable',
+        description: isAlreadySubmitted
+          ? 'You already have an active submission in the 365 queue. You can submit a new song tomorrow.'
+          : (result.error || 'Unable to submit this song.'),
       });
     }
   };

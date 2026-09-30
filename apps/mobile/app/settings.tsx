@@ -154,8 +154,10 @@ export default function SettingsScreen() {
             ]}
           >
             <View style={styles.settingLabelWrap}>
-              <Moon size={18} color={colors.onSurfaceVariant} style={{ marginRight: 12 }} />
-              <View>
+              <View style={styles.settingIconContainer}>
+                <Moon size={18} color={colors.onSurfaceVariant} />
+              </View>
+              <View style={{ flex: 1 }}>
                 <Text
                   style={[
                     styles.settingMainText,
@@ -213,8 +215,10 @@ export default function SettingsScreen() {
             ]}
           >
             <View style={styles.settingLabelWrap}>
-              <Bell size={18} color={colors.onSurfaceVariant} style={{ marginRight: 12 }} />
-              <View>
+              <View style={styles.settingIconContainer}>
+                <Bell size={18} color={colors.onSurfaceVariant} />
+              </View>
+              <View style={{ flex: 1 }}>
                 <Text
                   style={[
                     styles.settingMainText,
@@ -235,7 +239,7 @@ export default function SettingsScreen() {
                     },
                   ]}
                 >
-                  "🎧 Today's 365 is here." (7:00 PM IST)
+                  🎧 Today's 365 is here. (7:00 PM IST)
                 </Text>
               </View>
             </View>
@@ -256,8 +260,10 @@ export default function SettingsScreen() {
             ]}
           >
             <View style={styles.settingLabelWrap}>
-              <Bell size={18} color={colors.onSurfaceVariant} style={{ marginRight: 12 }} />
-              <View>
+              <View style={styles.settingIconContainer}>
+                <Bell size={18} color={colors.onSurfaceVariant} />
+              </View>
+              <View style={{ flex: 1 }}>
                 <Text
                   style={[
                     styles.settingMainText,
@@ -278,7 +284,7 @@ export default function SettingsScreen() {
                     },
                   ]}
                 >
-                  "🎉 Your song is today's 365."
+                  🎉 Your song is today's 365.
                 </Text>
               </View>
             </View>
@@ -523,6 +529,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     flex: 1,
     marginRight: 12,
+  },
+  settingIconContainer: {
+    width: 24,
+    height: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+    flexShrink: 0,
   },
   settingMainText: {
     fontSize: 15,

@@ -25,11 +25,9 @@ export const M3Switch: React.FC<M3SwitchProps> = ({
 }) => {
   const { colors } = useTheme();
 
-  // M3 switch dimensions: Track 52x32, Thumb 16->24
+  // M3 switch dimensions: Track 52x32dp, Thumb 16dp -> 24dp
   const TRACK_WIDTH = 52;
   const TRACK_HEIGHT = 32;
-  const THUMB_UNCHECKED = 16;
-  const THUMB_CHECKED = 24;
 
   const anim = useSharedValue(value ? 1 : 0);
   const isPressing = useSharedValue(0);
@@ -69,13 +67,16 @@ export const M3Switch: React.FC<M3SwitchProps> = ({
     };
   });
 
-  // Thumb position and size
+  // Thumb position, size, and color
   const animatedThumbStyle = useAnimatedStyle(() => {
-    // Left offset when unchecked: 6px. Right offset when checked: 52 - 24 - 4 = 24px.
-    const translateX = 6 + anim.value * (TRACK_WIDTH - THUMB_CHECKED - 8);
-    // Expand thumb when checked (16 -> 24) and slightly expand on press
-    const size = THUMB_UNCHECKED + anim.value * (THUMB_CHECKED - THUMB_UNCHECKED) + isPressing.value * 2;
-    const top = (TRACK_HEIGHT - size) / 2;
+    // Horizontal translation across the track (leaves 2px padding inside the 2px border)
+    // Inner width is 48px. Thumb is 24px. Range: 2px (left) to 22px (right).
+    const translateX = 2 + anim.value * 20;
+
+    // Scale from 16/24 (0.667) when unchecked to 1.0 (24px) when checked
+    const baseScale = (16 / 24) + anim.value * (1 - 16 / 24);
+    const pressMultiplier = isPressing.value ? 1.06 : 1.0;
+    const finalScale = baseScale * pressMultiplier;
 
     const thumbBg = interpolateColor(
       anim.value,
@@ -84,19 +85,18 @@ export const M3Switch: React.FC<M3SwitchProps> = ({
     );
 
     return {
-      width: size,
-      height: size,
-      borderRadius: size / 2,
-      transform: [{ translateX }],
-      top,
+      transform: [
+        { translateX },
+        { scale: finalScale },
+      ],
       backgroundColor: thumbBg,
     };
   });
 
-  // Check icon inside thumb
+  // Check icon inside thumb: perfectly scales and fades in on check
   const animatedCheckStyle = useAnimatedStyle(() => ({
-    opacity: withTiming(anim.value, { duration: 120 }),
-    transform: [{ scale: anim.value }],
+    opacity: anim.value,
+    transform: [{ scale: Math.max(0.001, anim.value) }],
   }));
 
   return (
@@ -118,7 +118,7 @@ export const M3Switch: React.FC<M3SwitchProps> = ({
     >
       <Animated.View style={[styles.thumb, animatedThumbStyle]}>
         <Animated.View style={[styles.checkIconWrapper, animatedCheckStyle]}>
-          <Check size={13} color={colors.primary} strokeWidth={3} />
+          <Check size={14} color={colors.primary} strokeWidth={2.8} />
         </Animated.View>
       </Animated.View>
     </AnimatedTouchable>
@@ -134,10 +134,17 @@ const styles = StyleSheet.create({
   thumb: {
     position: 'absolute',
     left: 0,
+    top: 2,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
+    overflow: 'hidden',
   },
   checkIconWrapper: {
+    width: 24,
+    height: 24,
     alignItems: 'center',
     justifyContent: 'center',
   },

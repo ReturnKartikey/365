@@ -43,7 +43,7 @@ export function validateSubmissionEligibility(
     return {
       canSubmit: false,
       errorCode: 'ACTIVE_SUBMISSION_EXISTS',
-      message: 'You already have an active submission in the 365 queue.',
+      message: 'You already have an active submission in the 365 queue. You can submit a new song tomorrow.',
     };
   }
 

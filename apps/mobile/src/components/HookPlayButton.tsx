@@ -238,14 +238,13 @@ export const HookPlayButton: React.FC<HookPlayButtonProps> = ({
         style,
       ]}
     >
-      {/* Animated Greyish Progress Fill Bar from Left to Right with Smooth Pulse */}
+      {/* Animated Greyish Progress Fill Bar from Left to Right with Smooth Pulse (flat vertical right edge) */}
       <View
         style={[
           styles.progressFill,
           {
             width: `${Math.round(progress * 100)}%`,
             backgroundColor: progressFillColor,
-            borderRadius: shapes.full,
           },
         ]}
       >
@@ -257,7 +256,6 @@ export const HookPlayButton: React.FC<HookPlayButtonProps> = ({
               {
                 backgroundColor: isDark ? 'rgba(255, 255, 255, 0.12)' : 'rgba(0, 0, 0, 0.08)',
                 opacity: pulse,
-                borderRadius: shapes.full,
               },
             ]}
           />
@@ -358,10 +356,9 @@ const styles = StyleSheet.create({
   leadingPulseBar: {
     position: 'absolute',
     right: 0,
-    top: 6,
-    bottom: 6,
-    width: 3,
-    borderRadius: 2,
+    top: 0,
+    bottom: 0,
+    width: 2.5,
   },
   contentRow: {
     flexDirection: 'row',

@@ -28,7 +28,7 @@ interface NavItemProps {
 
 const AnimatedTouchable = Animated.createAnimatedComponent(TouchableOpacity);
 
-const M3NavItem: React.FC<NavItemProps> = ({ label, icon: IconComponent, isSelected, onPress }) => {
+const M3NavItem: React.FC<NavItemProps> = ({ tabKey, label, icon: IconComponent, isSelected, onPress }) => {
   const { colors, shapes, typography } = useTheme();
 
   // Material You pill animation values
@@ -36,12 +36,16 @@ const M3NavItem: React.FC<NavItemProps> = ({ label, icon: IconComponent, isSelec
   const indicatorOpacity = useSharedValue(isSelected ? 1 : 0);
   const iconScale = useSharedValue(isSelected ? 1 : 0.94);
   const itemPressScale = useSharedValue(1);
+  const cdRotation = useSharedValue(0);
 
   useEffect(() => {
     if (isSelected) {
       indicatorScaleX.value = withSpring(1, { damping: 14, stiffness: 180 });
       indicatorOpacity.value = withTiming(1, { duration: 200, easing: Easing.out(Easing.cubic) });
       iconScale.value = withSpring(1.08, { damping: 12, stiffness: 220 });
+      if (tabKey === 'today') {
+        cdRotation.value = withSpring(cdRotation.value + 90, { damping: 12, stiffness: 180 });
+      }
     } else {
       indicatorScaleX.value = withTiming(0.4, { duration: 150 });
       indicatorOpacity.value = withTiming(0, { duration: 150 });
@@ -54,9 +58,15 @@ const M3NavItem: React.FC<NavItemProps> = ({ label, icon: IconComponent, isSelec
     transform: [{ scaleX: indicatorScaleX.value }],
   }));
 
-  const animatedIconStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: iconScale.value * itemPressScale.value }],
-  }));
+  const animatedIconStyle = useAnimatedStyle(() => {
+    const transforms: any[] = [{ scale: iconScale.value * itemPressScale.value }];
+    if (tabKey === 'today') {
+      transforms.push({ rotate: `${cdRotation.value}deg` });
+    }
+    return {
+      transform: transforms,
+    };
+  });
 
   const handlePressIn = () => {
     itemPressScale.value = withSpring(0.92, { damping: 10, stiffness: 300 });
@@ -66,9 +76,16 @@ const M3NavItem: React.FC<NavItemProps> = ({ label, icon: IconComponent, isSelec
     itemPressScale.value = withSpring(1, { damping: 10, stiffness: 300 });
   };
 
+  const handleItemPress = () => {
+    if (tabKey === 'today') {
+      cdRotation.value = withSpring(cdRotation.value + 140, { damping: 12, stiffness: 160 });
+    }
+    onPress();
+  };
+
   return (
     <AnimatedTouchable
-      onPress={onPress}
+      onPress={handleItemPress}
       onPressIn={handlePressIn}
       onPressOut={handlePressOut}
       activeOpacity={0.88}

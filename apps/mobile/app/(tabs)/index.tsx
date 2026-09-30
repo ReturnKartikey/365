@@ -57,11 +57,11 @@ export default function TodayScreen() {
 
   const isUserSubmitter = user && user.username === todayData.submitterUsername;
 
-  // Format date: e.g. "September 30"
-  const monthDayDate = new Intl.DateTimeFormat('en-US', {
-    month: 'long',
-    day: 'numeric',
-  }).format(new Date(todayData.date));
+  // Format date: e.g. "30 September"
+  const dateObj = new Date(todayData.date);
+  const day = dateObj.getDate();
+  const monthName = new Intl.DateTimeFormat('en-US', { month: 'long' }).format(dateObj);
+  const monthDayDate = `${day} ${monthName}`;
 
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.background }]} edges={['top', 'left', 'right']}>

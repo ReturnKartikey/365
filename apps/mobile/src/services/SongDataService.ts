@@ -176,7 +176,7 @@ export const SongDataService = {
     return inMemorySubmissions.find((s) => s.userId === userId && s.status === 'queued') ?? null;
   },
 
-  submitSong(song: Song, user: UserProfile): { success: boolean; error?: string; submission?: Submission } {
+  submitSong(song: Song, user: UserProfile): { success: boolean; error?: string; errorCode?: string; submission?: Submission } {
     const eligibility = validateSubmissionEligibility(
       user,
       song.id,
@@ -185,7 +185,7 @@ export const SongDataService = {
     );
 
     if (!eligibility.canSubmit) {
-      return { success: false, error: eligibility.message };
+      return { success: false, error: eligibility.message, errorCode: eligibility.errorCode };
     }
 
     const newSubmission: Submission = {

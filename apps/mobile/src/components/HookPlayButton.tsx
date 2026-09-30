@@ -26,6 +26,7 @@ export const HookPlayButton: React.FC<HookPlayButtonProps> = ({
 
   const [isPlaying, setIsPlaying] = useState(false);
   const [progress, setProgress] = useState(0); // 0 to 1
+  const [pulse, setPulse] = useState(0.8);
 
   const animationFrameRef = useRef<number | null>(null);
   const startTimeRef = useRef<number>(0);
@@ -50,13 +51,11 @@ export const HookPlayButton: React.FC<HookPlayButtonProps> = ({
       const ctx = new AudioCtx();
       audioContextRef.current = ctx;
 
-      // Warm acoustic / neo-soul chord progression hook (Texas Sun / Ritual vibe)
-      // Dmaj9 -> F#m7 -> Gmaj7 -> A7
       const chords = [
-        [146.83, 220.0, 277.18, 329.63, 440.0], // Dmaj9
-        [185.0, 220.0, 277.18, 329.63, 440.0],  // F#m7
-        [196.0, 246.94, 293.66, 369.99, 440.0], // Gmaj7
-        [220.0, 277.18, 329.63, 392.0, 493.88], // A9
+        [146.83, 220.0, 277.18, 329.63, 440.0],
+        [185.0, 220.0, 277.18, 329.63, 440.0],
+        [196.0, 246.94, 293.66, 369.99, 440.0],
+        [220.0, 277.18, 329.63, 392.0, 493.88],
       ];
 
       const masterGain = ctx.createGain();
@@ -80,7 +79,6 @@ export const HookPlayButton: React.FC<HookPlayButtonProps> = ({
           osc.type = noteIdx === 0 ? 'triangle' : 'sine';
           osc.frequency.setValueAtTime(freq, chordStartTime);
 
-          // Strum / envelope
           const noteOffset = noteIdx * 0.03;
           noteGain.gain.setValueAtTime(0.001, chordStartTime + noteOffset);
           noteGain.gain.exponentialRampToValueAtTime(0.35 / chord.length, chordStartTime + noteOffset + 0.08);
@@ -103,6 +101,7 @@ export const HookPlayButton: React.FC<HookPlayButtonProps> = ({
   const stopPlayback = () => {
     setIsPlaying(false);
     setProgress(0);
+    setPulse(0.8);
     pausedProgressRef.current = 0;
 
     if (animationFrameRef.current) {
@@ -162,6 +161,8 @@ export const HookPlayButton: React.FC<HookPlayButtonProps> = ({
       const curProgress = Math.min(1, elapsed / totalMs);
       pausedProgressRef.current = curProgress;
       setProgress(curProgress);
+      // Rhythmic smooth pulse wave (like music breathing)
+      setPulse(0.7 + 0.3 * Math.sin(now * 0.007));
 
       if (curProgress < 1) {
         animationFrameRef.current = requestAnimationFrame(tick);
@@ -180,14 +181,12 @@ export const HookPlayButton: React.FC<HookPlayButtonProps> = ({
       if (pausedProgressRef.current > 0 && pausedProgressRef.current < 1) {
         resumePlayback();
       } else {
-        // Start fresh
         setIsPlaying(true);
         setProgress(0);
         pausedProgressRef.current = 0;
         const totalMs = durationSeconds * 1000;
         startTimeRef.current = performance.now();
 
-        // Audio preview handling
         if (song.metadata.previewUrl && typeof window !== 'undefined' && window.Audio) {
           try {
             const audio = new window.Audio(song.metadata.previewUrl);
@@ -207,6 +206,7 @@ export const HookPlayButton: React.FC<HookPlayButtonProps> = ({
           const curProgress = Math.min(1, elapsed / totalMs);
           pausedProgressRef.current = curProgress;
           setProgress(curProgress);
+          setPulse(0.7 + 0.3 * Math.sin(now * 0.007));
 
           if (curProgress < 1) {
             animationFrameRef.current = requestAnimationFrame(tick);
@@ -220,7 +220,6 @@ export const HookPlayButton: React.FC<HookPlayButtonProps> = ({
     }
   };
 
-  // Subtle animated greyish progress overlay fill color
   const progressFillColor = isDark
     ? 'rgba(255, 255, 255, 0.16)'
     : 'rgba(0, 0, 0, 0.10)';
@@ -239,7 +238,7 @@ export const HookPlayButton: React.FC<HookPlayButtonProps> = ({
         style,
       ]}
     >
-      {/* Animated Greyish Progress Fill Bar from Left to Right */}
+      {/* Animated Greyish Progress Fill Bar from Left to Right with Smooth Pulse */}
       <View
         style={[
           styles.progressFill,
@@ -249,7 +248,33 @@ export const HookPlayButton: React.FC<HookPlayButtonProps> = ({
             borderRadius: shapes.full,
           },
         ]}
-      />
+      >
+        {/* Living pulse wave layer */}
+        {isPlaying && (
+          <View
+            style={[
+              StyleSheet.absoluteFillObject,
+              {
+                backgroundColor: isDark ? 'rgba(255, 255, 255, 0.12)' : 'rgba(0, 0, 0, 0.08)',
+                opacity: pulse,
+                borderRadius: shapes.full,
+              },
+            ]}
+          />
+        )}
+        {/* Leading edge subtle glowing beacon */}
+        {isPlaying && progress > 0.01 && (
+          <View
+            style={[
+              styles.leadingPulseBar,
+              {
+                backgroundColor: colors.primary,
+                opacity: 0.7 * pulse,
+              },
+            ]}
+          />
+        )}
+      </View>
 
       {/* Button Content (Icons & Label) */}
       <View style={styles.contentRow}>
@@ -329,6 +354,14 @@ const styles = StyleSheet.create({
     left: 0,
     top: 0,
     bottom: 0,
+  },
+  leadingPulseBar: {
+    position: 'absolute',
+    right: 0,
+    top: 6,
+    bottom: 6,
+    width: 3,
+    borderRadius: 2,
   },
   contentRow: {
     flexDirection: 'row',

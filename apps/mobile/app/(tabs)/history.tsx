@@ -47,17 +47,6 @@ export default function HistoryScreen() {
         <View style={styles.header}>
           <Text
             style={[
-              styles.superLabel,
-              {
-                color: colors.primary,
-                fontFamily: typography.labelSmall.fontFamilySans,
-              },
-            ]}
-          >
-            THE DAILY ARCHIVE
-          </Text>
-          <Text
-            style={[
               styles.screenTitle,
               {
                 color: colors.onBackground,
@@ -65,7 +54,7 @@ export default function HistoryScreen() {
               },
             ]}
           >
-            365 HISTORY
+            History
           </Text>
         </View>
 

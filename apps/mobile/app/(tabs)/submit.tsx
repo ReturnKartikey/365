@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { Check, AlertCircle, Music, Clock } from 'lucide-react-native';
+import { Check, AlertCircle, Music, Clock, Play, Pause } from 'lucide-react-native';
 import { useTheme } from '../../src/theme/ThemeContext';
 import { useAuth } from '../../src/services/AuthContext';
 import { SongDataService } from '../../src/services/SongDataService';
@@ -67,8 +67,136 @@ export default function SubmitScreen() {
     return () => clearTimeout(timer);
   }, [searchQuery]);
 
+  // Hook audio playback state
+  const [hookPlayingId, setHookPlayingId] = useState<string | null>(null);
+  const [hookStatus, setHookStatus] = useState<'idle' | 'playing' | 'paused' | 'completed'>('idle');
+  const audioElementRef = useRef<HTMLAudioElement | null>(null);
+  const audioContextRef = useRef<any>(null);
+  const hookTimerRef = useRef<any>(null);
+
+  const stopSongHook = () => {
+    if (hookTimerRef.current) {
+      clearTimeout(hookTimerRef.current);
+      hookTimerRef.current = null;
+    }
+    if (audioElementRef.current) {
+      audioElementRef.current.pause();
+      audioElementRef.current.currentTime = 0;
+      audioElementRef.current = null;
+    }
+    if (audioContextRef.current) {
+      try {
+        audioContextRef.current.close();
+      } catch {}
+      audioContextRef.current = null;
+    }
+  };
+
+  useEffect(() => {
+    return () => {
+      stopSongHook();
+    };
+  }, []);
+
+  const playSynthesizedHookFor = (song: Song, duration: number) => {
+    if (typeof window === 'undefined') return;
+    try {
+      const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+      if (!AudioCtx) return;
+      const ctx = new AudioCtx();
+      audioContextRef.current = ctx;
+
+      const titleLower = song.title.toLowerCase();
+      const isSynthwave = titleLower.includes('blind') || titleLower.includes('stay') || titleLower.includes('light');
+
+      const chords = isSynthwave
+        ? [
+            [261.63, 311.13, 392.0], // Cm (Blinding Lights intro)
+            [220.0, 261.63, 329.63], // Bb/Am
+            [174.61, 220.0, 261.63], // F
+            [196.0, 246.94, 293.66], // G
+          ]
+        : [
+            [146.83, 220.0, 277.18, 329.63], // Dmaj7
+            [185.0, 220.0, 277.18],          // F#m
+            [196.0, 246.94, 293.66],         // G
+            [220.0, 277.18, 329.63],         // A
+          ];
+
+      const masterGain = ctx.createGain();
+      masterGain.gain.setValueAtTime(0.18, ctx.currentTime);
+      masterGain.connect(ctx.destination);
+
+      const filter = ctx.createBiquadFilter();
+      filter.type = isSynthwave ? 'bandpass' : 'lowpass';
+      filter.frequency.setValueAtTime(isSynthwave ? 2200 : 1300, ctx.currentTime);
+      filter.connect(masterGain);
+
+      const chordDuration = duration / chords.length;
+      chords.forEach((chord, cIdx) => {
+        const cStart = ctx.currentTime + cIdx * chordDuration;
+        chord.forEach((freq, nIdx) => {
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.type = isSynthwave ? 'sawtooth' : 'triangle';
+          osc.frequency.setValueAtTime(freq, cStart);
+
+          gain.gain.setValueAtTime(0.001, cStart + nIdx * 0.02);
+          gain.gain.exponentialRampToValueAtTime(0.3 / chord.length, cStart + nIdx * 0.02 + 0.05);
+          gain.gain.exponentialRampToValueAtTime(0.001, cStart + chordDuration - 0.04);
+
+          osc.connect(gain);
+          gain.connect(filter);
+          osc.start(cStart + nIdx * 0.02);
+          osc.stop(cStart + chordDuration);
+        });
+      });
+    } catch (e) {
+      console.warn('Synthesis error:', e);
+    }
+  };
+
+  const playSongHook = (song: Song) => {
+    stopSongHook();
+    setHookPlayingId(song.id);
+    setHookStatus('playing');
+
+    const durationSeconds = 15;
+
+    if (song.metadata?.previewUrl && typeof window !== 'undefined' && window.Audio) {
+      try {
+        const audio = new window.Audio(song.metadata.previewUrl);
+        audioElementRef.current = audio;
+        audio.play().catch(() => playSynthesizedHookFor(song, durationSeconds));
+        audio.onended = () => {
+          setHookStatus('completed');
+        };
+      } catch {
+        playSynthesizedHookFor(song, durationSeconds);
+      }
+    } else {
+      playSynthesizedHookFor(song, durationSeconds);
+    }
+
+    hookTimerRef.current = setTimeout(() => {
+      stopSongHook();
+      setHookStatus('completed');
+    }, durationSeconds * 1000);
+  };
+
   const handleSelectSong = (song: Song) => {
-    setSelectedSong(song);
+    if (selectedSong?.id === song.id) {
+      // Toggle play / pause when already selected
+      if (hookStatus === 'playing') {
+        stopSongHook();
+        setHookStatus('paused');
+      } else {
+        playSongHook(song);
+      }
+    } else {
+      setSelectedSong(song);
+      playSongHook(song);
+    }
   };
 
   const handleConfirmSubmission = () => {
@@ -79,6 +207,8 @@ export default function SubmitScreen() {
       setShowGuestPrompt(true);
       return;
     }
+
+    stopSongHook();
 
     // Submit via SongDataService
     const result = SongDataService.submitSong(selectedSong, user);
@@ -275,7 +405,16 @@ export default function SubmitScreen() {
                         { backgroundColor: colors.primary, borderRadius: shapes.full },
                       ]}
                     >
-                      <Check size={16} color={colors.onPrimary} />
+                      {hookPlayingId === item.id && hookStatus === 'playing' ? (
+                        <Pause size={16} color={colors.onPrimary} fill={colors.onPrimary} />
+                      ) : (
+                        <Play
+                          size={16}
+                          color={colors.onPrimary}
+                          fill={colors.onPrimary}
+                          style={{ marginLeft: 2 }}
+                        />
+                      )}
                     </View>
                   )}
                 </TouchableOpacity>
@@ -548,8 +687,8 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   checkBadge: {
-    width: 28,
-    height: 28,
+    width: 36,
+    height: 36,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 6,

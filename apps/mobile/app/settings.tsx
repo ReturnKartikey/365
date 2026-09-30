@@ -17,6 +17,7 @@ import { useTheme } from '../src/theme/ThemeContext';
 import { useAuth } from '../src/services/AuthContext';
 import { SongDataService } from '../src/services/SongDataService';
 import { M3Button } from '../src/components/M3Button';
+import { M3Switch } from '../src/components/M3Switch';
 
 export default function SettingsScreen() {
   const { colors, typography, shapes, mode, setMode, isDark } = useTheme();
@@ -180,11 +181,9 @@ export default function SettingsScreen() {
               </View>
             </View>
 
-            <Switch
+            <M3Switch
               value={isDark}
               onValueChange={(val) => setMode(val ? 'dark' : 'light')}
-              thumbColor={colors.primary}
-              trackColor={{ false: colors.surfaceVariant, true: colors.primaryContainer }}
             />
           </View>
         </View>
@@ -241,11 +240,9 @@ export default function SettingsScreen() {
               </View>
             </View>
 
-            <Switch
+            <M3Switch
               value={user?.notificationPrefs?.dailyRelease ?? true}
               onValueChange={handleToggleDailyNotification}
-              thumbColor={colors.primary}
-              trackColor={{ false: colors.surfaceVariant, true: colors.primaryContainer }}
             />
           </View>
 
@@ -286,11 +283,9 @@ export default function SettingsScreen() {
               </View>
             </View>
 
-            <Switch
+            <M3Switch
               value={user?.notificationPrefs?.songSelected ?? true}
               onValueChange={handleToggleSongNotification}
-              thumbColor={colors.primary}
-              trackColor={{ false: colors.surfaceVariant, true: colors.primaryContainer }}
             />
           </View>
         </View>

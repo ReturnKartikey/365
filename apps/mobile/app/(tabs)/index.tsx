@@ -57,9 +57,8 @@ export default function TodayScreen() {
 
   const isUserSubmitter = user && user.username === todayData.submitterUsername;
 
-  // Format date: e.g. "Wednesday, September 30"
-  const formattedDate = new Intl.DateTimeFormat('en-US', {
-    weekday: 'long',
+  // Format date: e.g. "September 30"
+  const monthDayDate = new Intl.DateTimeFormat('en-US', {
     month: 'long',
     day: 'numeric',
   }).format(new Date(todayData.date));
@@ -116,32 +115,19 @@ export default function TodayScreen() {
           </View>
         )}
 
-        {/* Editorial Date and Day Display with Settings Icon */}
+        {/* Editorial Date Display with Settings Icon */}
         <View style={styles.metaSection}>
-          <View>
-            <Text
-              style={[
-                styles.dayNumberDisplay,
-                {
-                  color: colors.primary,
-                  fontFamily: typography.displayMedium.fontFamilySerif,
-                },
-              ]}
-            >
-              DAY {todayData.dayNumber}
-            </Text>
-            <Text
-              style={[
-                styles.dateDisplay,
-                {
-                  color: colors.onSurfaceVariant,
-                  fontFamily: typography.bodyMedium.fontFamilySans,
-                },
-              ]}
-            >
-              {formattedDate}
-            </Text>
-          </View>
+          <Text
+            style={[
+              styles.dayNumberDisplay,
+              {
+                color: colors.primary,
+                fontFamily: typography.displayMedium.fontFamilySerif,
+              },
+            ]}
+          >
+            {monthDayDate}
+          </Text>
 
           <TouchableOpacity
             onPress={() => router.push('/settings')}

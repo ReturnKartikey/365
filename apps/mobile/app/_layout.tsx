@@ -67,6 +67,8 @@ export default function RootLayout() {
     Inter_500Medium,
     Inter_600SemiBold,
     Inter_700Bold,
+    'NType82-Regular': require('../assets/fonts/NType82-Regular.otf'),
+    'NType82-Headline': require('../assets/fonts/NType82-Headline.otf'),
   });
 
   if (!fontsLoaded) {

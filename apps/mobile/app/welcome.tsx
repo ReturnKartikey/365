@@ -1,16 +1,20 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, Platform, useWindowDimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
+import { Sparkles } from 'lucide-react-native';
 import { useTheme } from '../src/theme/ThemeContext';
 import { useAuth } from '../src/services/AuthContext';
 import { M3Button } from '../src/components/M3Button';
 import { GoogleIcon } from '../src/components/GoogleIcon';
+import { LoginVinylDisc } from '../src/components/LoginVinylDisc';
 
 export default function WelcomeScreen() {
   const { colors, typography, shapes } = useTheme();
   const { signInWithGoogle, signInAsGuest } = useAuth();
+  const { width: SCREEN_WIDTH } = useWindowDimensions();
   const router = useRouter();
+
   const [loadingGoogle, setLoadingGoogle] = useState(false);
   const [loadingGuest, setLoadingGuest] = useState(false);
 
@@ -41,23 +45,20 @@ export default function WelcomeScreen() {
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.background }]}>
       <View style={styles.container}>
-        {/* Editorial Masthead */}
-        <View style={styles.mastheadSection}>
-          <Text
-            style={[
-              styles.superTitle,
-              {
-                color: colors.primary,
-                fontFamily: typography.labelMedium.fontFamilySans,
-              },
-            ]}
-          >
-            DAILY MUSIC RITUAL
-          </Text>
+        {/* 1. Giant Material You Vinyl CD peeking from right edge */}
+        <LoginVinylDisc primaryColor={colors.primary} />
 
+        {/* 2. Editorial Header & Manifesto (Left Column) */}
+        <View style={styles.contentColumn}>
+          {/* Subtle star accent */}
+          <View style={styles.sparkleRow}>
+            <Sparkles size={16} color={colors.primary} />
+          </View>
+
+          {/* Large Editorial Brand Title */}
           <Text
             style={[
-              styles.logoTitle,
+              styles.brandTitle,
               {
                 color: colors.onBackground,
                 fontFamily: typography.displayLarge.fontFamilySerif,
@@ -67,66 +68,47 @@ export default function WelcomeScreen() {
             365
           </Text>
 
-          <Text
-            style={[
-              styles.tagline,
-              {
-                color: colors.onSurfaceVariant,
-                fontFamily: typography.titleLarge.fontFamilySans,
-              },
-            ]}
-          >
-            One song. Every day.
-          </Text>
-        </View>
-
-        {/* Editorial Ritual Card */}
-        <View
-          style={[
-            styles.ritualCard,
-            {
-              backgroundColor: colors.surfaceContainerLow,
-              borderColor: colors.outlineVariant,
-              borderRadius: shapes.extraLarge,
-            },
-          ]}
-        >
-          <View style={styles.ritualHeaderRow}>
-            <View style={[styles.pulseDot, { backgroundColor: colors.primary }]} />
+          {/* Tagline in NType 82 font with split color */}
+          <View style={styles.taglineWrapper}>
             <Text
               style={[
-                styles.ritualTag,
+                styles.ntypeTagline,
                 {
-                  color: colors.primary,
-                  fontFamily: typography.labelSmall.fontFamilySans,
+                  fontFamily: 'NType82-Headline',
                 },
               ]}
             >
-              DAILY DROP AT 7:00 PM
+              <Text style={{ color: colors.onBackground }}>One song. </Text>
+              <Text style={{ color: colors.primary }}>Every day.</Text>
             </Text>
           </View>
+
+          {/* Pure Manifesto description text (no bullet points, no card border, no 7:00 PM drop) */}
           <Text
             style={[
               styles.manifestoText,
               {
-                color: colors.onSurface,
+                color: colors.onSurfaceVariant,
                 fontFamily: typography.bodyMedium.fontFamilySans,
+                maxWidth: Math.min(290, SCREEN_WIDTH * 0.68),
               },
             ]}
           >
-            One song discovered and submitted by the community. No algorithmic feeds or endless scrolls—just one track for the entire world to experience together today.
+            Discover one song daily, chosen by our community. No algorithms, no endless scrolling —
+            just one track for the entire world to experience together today.
           </Text>
         </View>
 
-        {/* Primary Action Buttons */}
+        {/* 3. Balanced Action Buttons */}
         <View style={styles.actionsSection}>
           <M3Button
             label="Continue with Google"
-            icon={<GoogleIcon size={19} color={colors.onPrimary} />}
+            icon={<GoogleIcon size={20} color={colors.onPrimary} />}
+            iconPosition="left"
             onPress={handleGoogleSignIn}
             loading={loadingGoogle}
             size="large"
-            style={styles.actionButton}
+            style={[styles.actionButton, { borderRadius: shapes.extraLarge }]}
           />
 
           <M3Button
@@ -135,7 +117,16 @@ export default function WelcomeScreen() {
             variant="tonal"
             loading={loadingGuest}
             size="large"
-            style={styles.actionButton}
+            style={[
+              styles.actionButton,
+              {
+                borderRadius: shapes.extraLarge,
+                backgroundColor: colors.surfaceContainerHigh,
+                borderWidth: 1,
+                borderColor: colors.outlineVariant,
+              },
+            ]}
+            textStyle={{ color: colors.onSurface }}
           />
         </View>
       </View>
@@ -149,60 +140,53 @@ const styles = StyleSheet.create({
   },
   container: {
     flex: 1,
+    position: 'relative',
+    overflow: 'hidden',
     paddingHorizontal: 28,
-    paddingVertical: 32,
+    paddingTop: 36,
+    paddingBottom: 28,
     justifyContent: 'space-between',
   },
-  mastheadSection: {
-    paddingTop: 48,
+  contentColumn: {
+    zIndex: 2,
+    paddingTop: 12,
   },
-  superTitle: {
-    fontSize: 13,
-    letterSpacing: 2.5,
-    textTransform: 'uppercase',
-    marginBottom: 12,
+  sparkleRow: {
+    marginBottom: 8,
+  },
+  brandTitle: {
+    fontSize: 76,
+    lineHeight: 82,
+    letterSpacing: -1.5,
     fontWeight: '700',
   },
-  logoTitle: {
-    fontSize: 78,
-    lineHeight: 84,
-    letterSpacing: -1,
+  taglineWrapper: {
+    marginTop: 10,
+    marginBottom: 16,
   },
-  tagline: {
-    fontSize: 22,
-    marginTop: 8,
-    fontWeight: '500',
-  },
-  ritualCard: {
-    padding: 20,
-    borderWidth: 1,
-    marginVertical: 18,
-  },
-  ritualHeaderRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 10,
-    gap: 8,
-  },
-  pulseDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-  },
-  ritualTag: {
-    fontSize: 11,
-    letterSpacing: 1.4,
-    fontWeight: '700',
+  ntypeTagline: {
+    fontSize: 27,
+    lineHeight: 33,
+    letterSpacing: -0.2,
+    ...Platform.select({
+      web: {
+        fontFamily: "'NType82-Headline', 'NType82-Regular', 'Space Grotesk', system-ui, sans-serif",
+      } as any,
+    }),
   },
   manifestoText: {
     fontSize: 14,
     lineHeight: 22,
     letterSpacing: 0.2,
+    opacity: 0.88,
   },
   actionsSection: {
-    paddingBottom: 24,
+    zIndex: 2,
+    paddingBottom: 12,
+    gap: 12,
   },
   actionButton: {
-    marginVertical: 8,
+    width: '100%',
+    marginVertical: 0,
   },
 });

@@ -1,5 +1,14 @@
 import React from 'react';
-import { TouchableOpacity, Text, StyleSheet, ActivityIndicator, ViewStyle, TextStyle } from 'react-native';
+import {
+  TouchableOpacity,
+  Text,
+  StyleSheet,
+  ActivityIndicator,
+  View,
+  ViewStyle,
+  TextStyle,
+  StyleProp,
+} from 'react-native';
 import { useTheme } from '../theme/ThemeContext';
 
 export interface M3ButtonProps {
@@ -7,10 +16,11 @@ export interface M3ButtonProps {
   onPress: () => void;
   variant?: 'filled' | 'tonal' | 'outlined' | 'text';
   icon?: React.ReactNode;
+  iconPosition?: 'inline' | 'left';
   disabled?: boolean;
   loading?: boolean;
-  style?: ViewStyle;
-  textStyle?: TextStyle;
+  style?: StyleProp<ViewStyle>;
+  textStyle?: StyleProp<TextStyle>;
   size?: 'normal' | 'large';
 }
 
@@ -19,6 +29,7 @@ export const M3Button: React.FC<M3ButtonProps> = ({
   onPress,
   variant = 'filled',
   icon,
+  iconPosition = 'inline',
   disabled = false,
   loading = false,
   style,
@@ -53,6 +64,8 @@ export const M3Button: React.FC<M3ButtonProps> = ({
     borderColor = colors.outlineVariant;
   }
 
+  const isIconLeft = iconPosition === 'left';
+
   return (
     <TouchableOpacity
       activeOpacity={0.82}
@@ -65,8 +78,9 @@ export const M3Button: React.FC<M3ButtonProps> = ({
           borderRadius: shapes.full,
           borderWidth,
           borderColor,
-          paddingVertical: isLarge ? 18 : 14,
-          paddingHorizontal: isLarge ? 28 : 24,
+          height: isLarge ? 56 : 46,
+          minHeight: isLarge ? 56 : 46,
+          paddingHorizontal: isLarge ? 28 : 20,
         },
         style,
       ]}
@@ -75,7 +89,12 @@ export const M3Button: React.FC<M3ButtonProps> = ({
         <ActivityIndicator color={textColor} size="small" />
       ) : (
         <>
-          {icon}
+          {icon && isIconLeft && (
+            <View style={styles.leftIconWrapper}>
+              {icon}
+            </View>
+          )}
+          {icon && !isIconLeft && icon}
           <Text
             style={[
               {
@@ -84,7 +103,8 @@ export const M3Button: React.FC<M3ButtonProps> = ({
                 fontFamily: typography.labelLarge.fontFamilySans,
                 fontWeight: '600',
                 letterSpacing: 0.3,
-                marginLeft: icon ? 8 : 0,
+                marginLeft: icon && !isIconLeft ? 8 : 0,
+                textAlign: 'center',
               },
               textStyle,
             ]}
@@ -102,5 +122,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    position: 'relative',
+  },
+  leftIconWrapper: {
+    position: 'absolute',
+    left: 20,
+    top: 0,
+    bottom: 0,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 });

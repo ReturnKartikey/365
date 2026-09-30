@@ -15,6 +15,7 @@ import { ExternalLink, X, Calendar } from 'lucide-react-native';
 import { useTheme } from '../../src/theme/ThemeContext';
 import { SongDataService } from '../../src/services/SongDataService';
 import { M3Button } from '../../src/components/M3Button';
+import { HookPlayButton } from '../../src/components/HookPlayButton';
 import { DailySong } from '@365/core';
 
 export default function HistoryScreen() {
@@ -228,12 +229,19 @@ export default function HistoryScreen() {
                   Submitted by @{activeDetailSong.submitterUsername}
                 </Text>
 
-                <View style={{ marginTop: 24, width: '100%' }}>
+                <View style={{ marginTop: 22, width: '100%', gap: 12 }}>
+                  <HookPlayButton
+                    song={activeDetailSong.song}
+                    durationSeconds={15}
+                    style={{ width: '100%' }}
+                  />
+
                   <M3Button
                     label="Listen on Spotify"
                     onPress={() => handleListen(activeDetailSong)}
                     icon={<ExternalLink size={20} color={colors.onPrimary} />}
                     size="large"
+                    style={{ width: '100%' }}
                   />
                 </View>
               </View>

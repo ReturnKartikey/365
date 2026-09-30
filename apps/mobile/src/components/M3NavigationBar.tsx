@@ -10,7 +10,7 @@ import Animated, {
   Easing,
 } from 'react-native-reanimated';
 import { useTheme } from '../theme/ThemeContext';
-import { Disc3, Plus, RotateCcw, LucideIcon } from 'lucide-react-native';
+import { Disc3, Plus, History, LucideIcon } from 'lucide-react-native';
 
 export type TabKey = 'today' | 'submit' | 'history';
 
@@ -53,18 +53,18 @@ const M3NavItem: React.FC<NavItemProps> = ({ tabKey, label, icon: IconComponent,
         // Vinyl disc spin
         iconRotation.value = withSpring(iconRotation.value + 90, { damping: 12, stiffness: 180 });
       } else if (tabKey === 'submit') {
-        // Plus "invoke / appear" animation (no rotation)
+        // Plus subtle invoke/appear (gentle scale, no over-expansion)
         iconPopScale.value = withSequence(
-          withTiming(0.3, { duration: 70 }),
-          withSpring(1.3, { damping: 10, stiffness: 250 }),
-          withSpring(1.0, { damping: 12, stiffness: 200 })
+          withTiming(0.85, { duration: 80 }),
+          withSpring(1.08, { damping: 14, stiffness: 220 }),
+          withSpring(1.0, { damping: 12, stiffness: 180 })
         );
         iconOpacity.value = withSequence(
-          withTiming(0.3, { duration: 70 }),
-          withTiming(1, { duration: 160 })
+          withTiming(0.6, { duration: 70 }),
+          withTiming(1, { duration: 150 })
         );
       } else if (tabKey === 'history') {
-        // Arrow circle rotates along its circular path
+        // Smooth counter-clockwise spin along arrow path
         iconRotation.value = withSpring(iconRotation.value - 360, { damping: 14, stiffness: 140 });
       }
     } else {
@@ -105,18 +105,18 @@ const M3NavItem: React.FC<NavItemProps> = ({ tabKey, label, icon: IconComponent,
       // Vinyl disc spin
       iconRotation.value = withSpring(iconRotation.value + 140, { damping: 12, stiffness: 160 });
     } else if (tabKey === 'submit') {
-      // Plus "invoke / appear" burst (pure bloom/materialize, no rotation)
+      // Plus tasteful subtle pop (contained within pill)
       iconPopScale.value = withSequence(
-        withTiming(0.35, { duration: 70 }),
-        withSpring(1.32, { damping: 9, stiffness: 260 }),
-        withSpring(1.0, { damping: 12, stiffness: 220 })
+        withTiming(0.86, { duration: 80 }),
+        withSpring(1.08, { damping: 14, stiffness: 220 }),
+        withSpring(1.0, { damping: 12, stiffness: 180 })
       );
       iconOpacity.value = withSequence(
-        withTiming(0.4, { duration: 70 }),
-        withTiming(1, { duration: 180 })
+        withTiming(0.7, { duration: 60 }),
+        withTiming(1, { duration: 140 })
       );
     } else if (tabKey === 'history') {
-      // Arrow circle smooth rewind spin along its path
+      // Smooth rewind spin along arrow path
       iconRotation.value = withSpring(iconRotation.value - 360, { damping: 13, stiffness: 150 });
     }
     onPress();
@@ -175,7 +175,7 @@ export const M3NavigationBar: React.FC<M3NavigationBarProps> = ({ currentTab, on
   const tabs: Array<{ key: TabKey; label: string; icon: LucideIcon }> = [
     { key: 'today', label: 'Today', icon: Disc3 },
     { key: 'submit', label: 'Submit', icon: Plus },
-    { key: 'history', label: 'History', icon: RotateCcw },
+    { key: 'history', label: 'History', icon: History },
   ];
 
   return (

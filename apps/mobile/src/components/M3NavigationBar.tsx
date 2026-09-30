@@ -11,6 +11,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { useTheme } from '../theme/ThemeContext';
 import { Disc3, Plus, History, LucideIcon } from 'lucide-react-native';
+import { HistoryNavIcon } from './HistoryNavIcon';
 
 export type TabKey = 'today' | 'submit' | 'history';
 
@@ -64,7 +65,7 @@ const M3NavItem: React.FC<NavItemProps> = ({ tabKey, label, icon: IconComponent,
           withTiming(1, { duration: 150 })
         );
       } else if (tabKey === 'history') {
-        // Smooth counter-clockwise spin along arrow path
+        // Only the outer arrow circle rotates 360° and returns to same place
         iconRotation.value = withSpring(iconRotation.value - 360, { damping: 14, stiffness: 140 });
       }
     } else {
@@ -83,7 +84,8 @@ const M3NavItem: React.FC<NavItemProps> = ({ tabKey, label, icon: IconComponent,
     const transforms: any[] = [
       { scale: iconScale.value * itemPressScale.value * iconPopScale.value },
     ];
-    if (iconRotation.value !== 0) {
+    // Only today vinyl CD rotates the entire icon container
+    if (tabKey === 'today' && iconRotation.value !== 0) {
       transforms.push({ rotate: `${iconRotation.value}deg` });
     }
     return {
@@ -116,11 +118,13 @@ const M3NavItem: React.FC<NavItemProps> = ({ tabKey, label, icon: IconComponent,
         withTiming(1, { duration: 140 })
       );
     } else if (tabKey === 'history') {
-      // Smooth rewind spin along arrow path
+      // Arrow circle smooth 360° spin back to start
       iconRotation.value = withSpring(iconRotation.value - 360, { damping: 13, stiffness: 150 });
     }
     onPress();
   };
+
+  const iconColor = isSelected ? colors.onSecondaryContainer : colors.onSurfaceVariant;
 
   return (
     <AnimatedTouchable
@@ -145,10 +149,18 @@ const M3NavItem: React.FC<NavItemProps> = ({ tabKey, label, icon: IconComponent,
 
         {/* Icon with spring animation */}
         <Animated.View style={[styles.iconLayer, animatedIconStyle]}>
-          <IconComponent
-            size={22}
-            color={isSelected ? colors.onSecondaryContainer : colors.onSurfaceVariant}
-          />
+          {tabKey === 'history' ? (
+            <HistoryNavIcon
+              size={22}
+              color={iconColor}
+              rotation={iconRotation}
+            />
+          ) : (
+            <IconComponent
+              size={22}
+              color={iconColor}
+            />
+          )}
         </Animated.View>
       </View>
 

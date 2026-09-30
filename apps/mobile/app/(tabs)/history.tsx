@@ -92,25 +92,16 @@ export default function HistoryScreen() {
                   <View style={styles.dayBadgeRow}>
                     <Text
                       style={[
-                        styles.dayBadge,
-                        {
-                          color: colors.primary,
-                          fontFamily: typography.labelSmall.fontFamilySans,
-                        },
-                      ]}
-                    >
-                      DAY {item.dayNumber}
-                    </Text>
-                    <Text
-                      style={[
                         styles.dateBadge,
                         {
-                          color: colors.onSurfaceVariant,
-                          fontFamily: typography.labelSmall.fontFamilySans,
+                          color: colors.primary,
+                          fontFamily: typography.labelMedium.fontFamilySans,
+                          fontWeight: '600',
+                          letterSpacing: 0.3,
                         },
                       ]}
                     >
-                      • {formattedDate}
+                      {formattedDate}
                     </Text>
                   </View>
 
@@ -189,7 +180,10 @@ export default function HistoryScreen() {
                     },
                   ]}
                 >
-                  DAY {activeDetailSong.dayNumber}
+                  {new Intl.DateTimeFormat('en-US', {
+                    month: 'short',
+                    day: 'numeric',
+                  }).format(new Date(activeDetailSong.date))}
                 </Text>
 
                 <Text

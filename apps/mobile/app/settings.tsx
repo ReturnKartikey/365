@@ -18,6 +18,7 @@ import { useAuth } from '../src/services/AuthContext';
 import { SongDataService } from '../src/services/SongDataService';
 import { M3Button } from '../src/components/M3Button';
 import { M3Switch } from '../src/components/M3Switch';
+import { M3Toast } from '../src/components/M3Toast';
 
 export default function SettingsScreen() {
   const { colors, typography, shapes, mode, setMode, isDark } = useTheme();
@@ -30,6 +31,10 @@ export default function SettingsScreen() {
   const [showReportModal, setShowReportModal] = useState(false);
   const [reportReason, setReportReason] = useState('');
   const [reportTarget, setReportTarget] = useState<'song' | 'user'>('song');
+
+  // Acknowledgment toast state
+  const [showToast, setShowToast] = useState(false);
+  const [toastMessage, setToastMessage] = useState('');
 
   const handleToggleDailyNotification = (val: boolean) => {
     updateNotificationPrefs({ dailyRelease: val });
@@ -56,7 +61,8 @@ export default function SettingsScreen() {
 
     setReportReason('');
     setShowReportModal(false);
-    Alert.alert('Report Submitted', 'Thank you for keeping 365 thoughtful and safe.');
+    setToastMessage('Report submitted. Thank you for keeping 365 safe.');
+    setShowToast(true);
   };
 
   return (
@@ -371,8 +377,8 @@ export default function SettingsScreen() {
         </View>
       </ScrollView>
 
-      {/* Explicit Content Policy Modal */}
-      <Modal visible={showPolicy} transparent animationType="slide">
+      {/* Content & Safety Policy Modal */}
+      <Modal visible={showPolicy} transparent animationType="fade" onRequestClose={() => setShowPolicy(false)}>
         <View style={styles.modalOverlay}>
           <View
             style={[
@@ -380,6 +386,7 @@ export default function SettingsScreen() {
               {
                 backgroundColor: colors.surfaceContainerHigh,
                 borderRadius: shapes.extraLarge,
+                maxWidth: 440,
               },
             ]}
           >
@@ -392,24 +399,48 @@ export default function SettingsScreen() {
                 },
               ]}
             >
-              Content Policy
-            </Text>
-            <Text
-              style={[
-                styles.modalBody,
-                {
-                  color: colors.onSurfaceVariant,
-                  fontFamily: typography.bodyMedium.fontFamilySans,
-                },
-              ]}
-            >
-              365 values artistic expression while maintaining respect for a universal listening ritual.
-              Explicit tracks are labeled directly via official music catalog metadata. Hate speech, harassment,
-              or abusive content in usernames or submissions will be removed immediately, and accounts are subject
-              to moderation bans.
+              Content & Safety Policy
             </Text>
 
-            <View style={{ marginTop: 20 }}>
+            <ScrollView style={{ maxHeight: 360, marginVertical: 10 }} showsVerticalScrollIndicator={false}>
+              <View style={styles.policyItem}>
+                <Text style={[styles.policyItemTitle, { color: colors.primary, fontFamily: typography.titleSmall.fontFamilySans }]}>
+                  1. One Global Song Ritual
+                </Text>
+                <Text style={[styles.policyItemBody, { color: colors.onSurfaceVariant, fontFamily: typography.bodyMedium.fontFamilySans }]}>
+                  Every selected song is heard by the entire global 365 community simultaneously. Submissions are curated for discovery, melody, and musical craft—never shock value, spam, or promotional campaigns.
+                </Text>
+              </View>
+
+              <View style={styles.policyItem}>
+                <Text style={[styles.policyItemTitle, { color: colors.primary, fontFamily: typography.titleSmall.fontFamilySans }]}>
+                  2. Explicit Music & Metadata
+                </Text>
+                <Text style={[styles.policyItemBody, { color: colors.onSurfaceVariant, fontFamily: typography.bodyMedium.fontFamilySans }]}>
+                  All audio streams through licensed catalog providers (Spotify). Official explicit catalog tags are strictly preserved, allowing listeners to stay informed before playing.
+                </Text>
+              </View>
+
+              <View style={styles.policyItem}>
+                <Text style={[styles.policyItemTitle, { color: colors.primary, fontFamily: typography.titleSmall.fontFamilySans }]}>
+                  3. Zero-Tolerance Violations
+                </Text>
+                <Text style={[styles.policyItemBody, { color: colors.onSurfaceVariant, fontFamily: typography.bodyMedium.fontFamilySans }]}>
+                  Submissions, titles, or submitter handles promoting hate speech, targeted harassment, violence, defamation, or illegal acts are rejected on sight and trigger an instant, permanent account ban.
+                </Text>
+              </View>
+
+              <View style={styles.policyItem}>
+                <Text style={[styles.policyItemTitle, { color: colors.primary, fontFamily: typography.titleSmall.fontFamilySans }]}>
+                  4. Community Reporting
+                </Text>
+                <Text style={[styles.policyItemBody, { color: colors.onSurfaceVariant, fontFamily: typography.bodyMedium.fontFamilySans }]}>
+                  Any daily release or submitter can be flagged directly via the in-app reporting tool. Community reports are reviewed by moderators within 24 hours.
+                </Text>
+              </View>
+            </ScrollView>
+
+            <View style={{ marginTop: 8 }}>
               <M3Button label="Understood" onPress={() => setShowPolicy(false)} variant="filled" />
             </View>
           </View>
@@ -417,7 +448,7 @@ export default function SettingsScreen() {
       </Modal>
 
       {/* Report Modal */}
-      <Modal visible={showReportModal} transparent animationType="fade">
+      <Modal visible={showReportModal} transparent animationType="fade" onRequestClose={() => setShowReportModal(false)}>
         <View style={styles.modalOverlay}>
           <View
             style={[
@@ -425,6 +456,7 @@ export default function SettingsScreen() {
               {
                 backgroundColor: colors.surfaceContainerHigh,
                 borderRadius: shapes.extraLarge,
+                maxWidth: 440,
               },
             ]}
           >
@@ -464,6 +496,14 @@ export default function SettingsScreen() {
           </View>
         </View>
       </Modal>
+
+      {/* Material You 3 Acknowledgment Toast with Animated Tick */}
+      <M3Toast
+        visible={showToast}
+        title="Submitted"
+        message={toastMessage}
+        onDismiss={() => setShowToast(false)}
+      />
     </SafeAreaView>
   );
 }
@@ -582,5 +622,17 @@ const styles = StyleSheet.create({
     textAlignVertical: 'top',
     fontSize: 14,
     marginTop: 12,
+  },
+  policyItem: {
+    marginBottom: 14,
+  },
+  policyItemTitle: {
+    fontWeight: '700',
+    fontSize: 14,
+    marginBottom: 3,
+  },
+  policyItemBody: {
+    fontSize: 13,
+    lineHeight: 19,
   },
 });

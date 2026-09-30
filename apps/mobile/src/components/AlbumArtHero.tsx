@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { View, Image, StyleSheet, Dimensions, Platform } from 'react-native';
+import { View, Image, StyleSheet, useWindowDimensions, Platform } from 'react-native';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -14,11 +14,12 @@ interface AlbumArtHeroProps {
   isNewRelease?: boolean;
 }
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
-const ARTWORK_SIZE = Math.min(SCREEN_WIDTH - 48, 380);
-
 export const AlbumArtHero: React.FC<AlbumArtHeroProps> = ({ artworkUrl, isNewRelease = false }) => {
   const { colors, shapes } = useTheme();
+  const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = useWindowDimensions();
+
+  // Responsive size optimized so title, artist, and buttons fit in view
+  const artworkSize = Math.min(SCREEN_WIDTH - 56, Math.min(SCREEN_HEIGHT * 0.34, 280));
 
   // Reveal animation shared values
   const opacity = useSharedValue(isNewRelease ? 0 : 1);
@@ -59,8 +60,8 @@ export const AlbumArtHero: React.FC<AlbumArtHeroProps> = ({ artworkUrl, isNewRel
         style={[
           styles.tonalPlate,
           {
-            width: ARTWORK_SIZE,
-            height: ARTWORK_SIZE,
+            width: artworkSize,
+            height: artworkSize,
             borderRadius: shapes.extraLarge,
             backgroundColor: colors.surfaceContainerHighest,
           },
@@ -71,8 +72,8 @@ export const AlbumArtHero: React.FC<AlbumArtHeroProps> = ({ artworkUrl, isNewRel
         style={[
           styles.artWrapper,
           {
-            width: ARTWORK_SIZE,
-            height: ARTWORK_SIZE,
+            width: artworkSize,
+            height: artworkSize,
             borderRadius: shapes.extraLarge,
             borderColor: colors.outlineVariant,
           },
@@ -98,7 +99,7 @@ const styles = StyleSheet.create({
   outerContainer: {
     alignItems: 'center',
     justifyContent: 'center',
-    marginVertical: 18,
+    marginVertical: 10,
     position: 'relative',
   },
   tonalPlate: {

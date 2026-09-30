@@ -16,6 +16,7 @@ import { useAuth } from '../../src/services/AuthContext';
 import { SongDataService } from '../../src/services/SongDataService';
 import { AlbumArtHero } from '../../src/components/AlbumArtHero';
 import { M3Button } from '../../src/components/M3Button';
+import { HookPlayButton } from '../../src/components/HookPlayButton';
 import { DailySong } from '@365/core';
 
 export default function TodayScreen() {
@@ -65,42 +66,6 @@ export default function TodayScreen() {
 
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.background }]} edges={['top', 'left', 'right']}>
-      {/* Editorial Header */}
-      <View style={styles.headerBar}>
-        <View>
-          <Text
-            style={[
-              styles.headerBrand,
-              {
-                color: colors.onBackground,
-                fontFamily: typography.headlineSmall.fontFamilySerif,
-              },
-            ]}
-          >
-            365
-          </Text>
-          <Text
-            style={[
-              styles.headerTagline,
-              {
-                color: colors.onSurfaceVariant,
-                fontFamily: typography.labelSmall.fontFamilySans,
-              },
-            ]}
-          >
-            One song. Every day.
-          </Text>
-        </View>
-
-        <TouchableOpacity
-          onPress={() => router.push('/settings')}
-          hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-          style={[styles.iconButton, { backgroundColor: colors.surfaceContainerHigh }]}
-        >
-          <Settings size={20} color={colors.onSurface} />
-        </TouchableOpacity>
-      </View>
-
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
@@ -151,30 +116,40 @@ export default function TodayScreen() {
           </View>
         )}
 
-        {/* Editorial Date and Day Display */}
+        {/* Editorial Date and Day Display with Settings Icon */}
         <View style={styles.metaSection}>
-          <Text
-            style={[
-              styles.dayNumberDisplay,
-              {
-                color: colors.primary,
-                fontFamily: typography.displayMedium.fontFamilySerif,
-              },
-            ]}
+          <View>
+            <Text
+              style={[
+                styles.dayNumberDisplay,
+                {
+                  color: colors.primary,
+                  fontFamily: typography.displayMedium.fontFamilySerif,
+                },
+              ]}
+            >
+              DAY {todayData.dayNumber}
+            </Text>
+            <Text
+              style={[
+                styles.dateDisplay,
+                {
+                  color: colors.onSurfaceVariant,
+                  fontFamily: typography.bodyMedium.fontFamilySans,
+                },
+              ]}
+            >
+              {formattedDate}
+            </Text>
+          </View>
+
+          <TouchableOpacity
+            onPress={() => router.push('/settings')}
+            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+            style={[styles.iconButton, { backgroundColor: colors.surfaceContainerHigh }]}
           >
-            DAY {todayData.dayNumber}
-          </Text>
-          <Text
-            style={[
-              styles.dateDisplay,
-              {
-                color: colors.onSurfaceVariant,
-                fontFamily: typography.bodyMedium.fontFamilySans,
-              },
-            ]}
-          >
-            {formattedDate}
-          </Text>
+            <Settings size={18} color={colors.onSurface} />
+          </TouchableOpacity>
         </View>
 
         {/* Hero Album Artwork with Reveal Animation */}
@@ -238,6 +213,13 @@ export default function TodayScreen() {
 
         {/* Action Controls */}
         <View style={styles.actionControlsSection}>
+          {/* Instagram-style Hook Play Button */}
+          <HookPlayButton
+            song={todayData.song}
+            durationSeconds={15}
+            style={styles.hookPlayButton}
+          />
+
           <M3Button
             label="Listen on Spotify"
             onPress={handleListen}
@@ -262,39 +244,24 @@ const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
   },
-  headerBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-  },
-  headerBrand: {
-    fontSize: 22,
-    letterSpacing: -0.5,
-  },
-  headerTagline: {
-    fontSize: 11,
-    letterSpacing: 0.5,
-    marginTop: 1,
-  },
   iconButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 38,
+    height: 38,
+    borderRadius: 19,
     alignItems: 'center',
     justifyContent: 'center',
   },
   scrollContent: {
     paddingHorizontal: 24,
-    paddingBottom: 40,
+    paddingBottom: 28,
+    paddingTop: 4,
   },
   celebrationCard: {
-    padding: 16,
-    borderRadius: 16,
+    padding: 14,
+    borderRadius: 14,
     borderWidth: 1,
-    marginBottom: 16,
-    marginTop: 8,
+    marginBottom: 12,
+    marginTop: 4,
   },
   celebrationRow: {
     flexDirection: 'row',
@@ -312,44 +279,50 @@ const styles = StyleSheet.create({
     opacity: 0.85,
   },
   metaSection: {
-    marginTop: 12,
-    marginBottom: 4,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 4,
+    marginBottom: 2,
   },
   dayNumberDisplay: {
-    fontSize: 38,
-    lineHeight: 44,
+    fontSize: 34,
+    lineHeight: 40,
     letterSpacing: -0.5,
   },
   dateDisplay: {
-    fontSize: 14,
+    fontSize: 13,
     letterSpacing: 0.2,
-    marginTop: 2,
+    marginTop: 1,
   },
   songInfoSection: {
-    marginVertical: 14,
+    marginVertical: 10,
   },
   songTitle: {
-    fontSize: 30,
-    lineHeight: 38,
-    marginBottom: 6,
+    fontSize: 26,
+    lineHeight: 32,
+    marginBottom: 4,
   },
   songArtist: {
-    fontSize: 18,
-    lineHeight: 24,
-    marginBottom: 10,
+    fontSize: 16,
+    lineHeight: 22,
+    marginBottom: 6,
   },
   attributionRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 4,
+    marginTop: 2,
   },
   attributionText: {
-    fontSize: 14,
+    fontSize: 13,
     letterSpacing: 0.2,
   },
   actionControlsSection: {
-    marginTop: 20,
-    gap: 12,
+    marginTop: 14,
+    gap: 10,
+  },
+  hookPlayButton: {
+    width: '100%',
   },
   primaryListenButton: {
     width: '100%',

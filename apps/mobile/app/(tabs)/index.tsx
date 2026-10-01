@@ -53,9 +53,14 @@ export default function TodayScreen() {
       todayData.song.externalUrls.web ||
       `https://open.spotify.com/track/${todayData.song.providerSongId}`;
 
+    if (Platform.OS === 'web' && typeof window !== 'undefined') {
+      window.open(url, '_blank');
+      return;
+    }
+
     try {
       const canOpen = await Linking.canOpenURL(url);
-      if (canOpen || Platform.OS === 'web') {
+      if (canOpen) {
         await Linking.openURL(url);
       } else {
         await Linking.openURL(`https://open.spotify.com/search/${encodeURIComponent(todayData.song.title)}`);

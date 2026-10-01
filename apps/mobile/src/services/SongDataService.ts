@@ -18,122 +18,12 @@ const spotifyProvider = new SpotifyProvider({
   enableFallback: true,
 });
 
+import { CURATED_DAILY_SONGS, FEATURED_CATALOG_SONGS } from './curatedSongs';
+
 const CACHE_KEY_TODAY = '365_cache_today_song';
 const CACHE_KEY_HISTORY = '365_cache_history_songs';
 
-const INITIAL_DAILY_SONGS: DailySong[] = [
-  {
-    id: '2026-09-30',
-    date: '2026-09-30',
-    dayNumber: 47,
-    songId: 'spotify_6rqhFgbbKwnb9MLmUQDhG6',
-    song: {
-      id: 'spotify_6rqhFgbbKwnb9MLmUQDhG6',
-      title: 'Texas Sun',
-      artist: 'Leon Bridges, Khruangbin',
-      album: 'Texas Sun - EP',
-      artworkUrl:
-        'https://is1-ssl.mzstatic.com/image/thumb/Music115/v4/ed/90/53/ed9053df-0476-f6aa-d7f2-8664fc589904/656605151465.jpg/600x600bb.jpg',
-      provider: 'spotify',
-      providerSongId: '6rqhFgbbKwnb9MLmUQDhG6',
-      externalUrls: {
-        spotify: 'https://open.spotify.com/track/6rqhFgbbKwnb9MLmUQDhG6',
-        web: 'https://open.spotify.com/track/6rqhFgbbKwnb9MLmUQDhG6',
-      },
-      metadata: {
-        durationMs: 252000,
-        previewUrl:
-          'https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview221/v4/64/0d/bc/640dbc64-93ac-1322-20bf-0c929bfcadb6/mzaf_10048206250487462970.plus.aac.p.m4a',
-        isExplicit: false,
-        genre: 'Soul / Psychedelic Rock',
-        releaseYear: 2020,
-        palette: {
-          dominant: '#C67D5A',
-        },
-      },
-      createdAt: '2026-09-30T13:30:00Z',
-    },
-    submitterId: 'usr_maya',
-    submitterUsername: 'maya',
-    submitterDisplayName: 'Maya Lin',
-    publishedAt: '2026-09-30T13:30:00Z',
-    status: 'published',
-  },
-  {
-    id: '2026-09-29',
-    date: '2026-09-29',
-    dayNumber: 46,
-    songId: 'spotify_2WfaOiMkCvy7Z5vo2Ycrz0',
-    song: {
-      id: 'spotify_2WfaOiMkCvy7Z5vo2Ycrz0',
-      title: 'Says',
-      artist: 'Nils Frahm',
-      album: 'Spaces',
-      artworkUrl:
-        'https://is1-ssl.mzstatic.com/image/thumb/Music124/v4/25/3c/3e/253c3e06-cd31-0952-1b90-4de69a77def5/4050486102855_cover.jpg/600x600bb.jpg',
-      provider: 'spotify',
-      providerSongId: '2WfaOiMkCvy7Z5vo2Ycrz0',
-      externalUrls: {
-        spotify: 'https://open.spotify.com/track/2WfaOiMkCvy7Z5vo2Ycrz0',
-        web: 'https://open.spotify.com/track/2WfaOiMkCvy7Z5vo2Ycrz0',
-      },
-      metadata: {
-        durationMs: 518000,
-        previewUrl:
-          'https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview211/v4/36/97/9c/36979c81-c97b-2323-9ada-96fa05a94785/mzaf_546068789723583981.plus.aac.p.m4a',
-        isExplicit: false,
-        genre: 'Modern Classical',
-        releaseYear: 2013,
-        palette: {
-          dominant: '#5E6B73',
-        },
-      },
-      createdAt: '2026-09-29T13:30:00Z',
-    },
-    submitterId: 'usr_julian',
-    submitterUsername: 'juliank',
-    submitterDisplayName: 'Julian K',
-    publishedAt: '2026-09-29T13:30:00Z',
-    status: 'published',
-  },
-  {
-    id: '2026-09-28',
-    date: '2026-09-28',
-    dayNumber: 45,
-    songId: 'spotify_0VjIjW4GlUZAMYd2vXMi3b',
-    song: {
-      id: 'spotify_0VjIjW4GlUZAMYd2vXMi3b',
-      title: 'Blinding Lights',
-      artist: 'The Weeknd',
-      album: 'After Hours',
-      artworkUrl:
-        'https://is1-ssl.mzstatic.com/image/thumb/Music115/v4/61/e7/3f/61e73f94-018d-5f50-50ec-8521952bc72e/20UM1IM11629.rgb.jpg/600x600bb.jpg',
-      provider: 'spotify',
-      providerSongId: '0VjIjW4GlUZAMYd2vXMi3b',
-      externalUrls: {
-        spotify: 'https://open.spotify.com/track/0VjIjW4GlUZAMYd2vXMi3b',
-        web: 'https://open.spotify.com/track/0VjIjW4GlUZAMYd2vXMi3b',
-      },
-      metadata: {
-        durationMs: 200040,
-        previewUrl:
-          'https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview211/v4/12/73/ca/1273ca46-233a-5331-189b-25ac1d656533/mzaf_976341070785891411.plus.aac.p.m4a',
-        isExplicit: false,
-        genre: 'Synthwave',
-        releaseYear: 2019,
-        palette: {
-          dominant: '#8C3A3A',
-        },
-      },
-      createdAt: '2026-09-28T13:30:00Z',
-    },
-    submitterId: 'usr_sara',
-    submitterUsername: 'sara_m',
-    submitterDisplayName: 'Sara M',
-    publishedAt: '2026-09-28T13:30:00Z',
-    status: 'published',
-  },
-];
+const INITIAL_DAILY_SONGS: DailySong[] = CURATED_DAILY_SONGS;
 
 let inMemoryDailySongs = [...INITIAL_DAILY_SONGS];
 let inMemorySubmissions: Submission[] = [];
@@ -232,9 +122,18 @@ export const SongDataService = {
             status: d.status,
           }));
 
-          inMemoryDailySongs = liveHistory;
-          saveLocalCache(CACHE_KEY_HISTORY, liveHistory);
-          return liveHistory;
+          // Merge live Supabase songs with curated collection so full library of 25 tracks is always accessible
+          const merged = [...liveHistory];
+          for (const s of CURATED_DAILY_SONGS) {
+            if (!merged.some((m) => m.dayNumber === s.dayNumber || m.song.title.toLowerCase() === s.song.title.toLowerCase())) {
+              merged.push(s);
+            }
+          }
+          merged.sort((a, b) => b.dayNumber - a.dayNumber);
+
+          inMemoryDailySongs = merged;
+          saveLocalCache(CACHE_KEY_HISTORY, merged);
+          return merged;
         }
       } catch (e) {
         console.warn('[SongDataService] Failed to fetch live history from Supabase:', e);
@@ -245,6 +144,13 @@ export const SongDataService = {
 
   getDaySong(dayNumber: number): DailySong | null {
     return inMemoryDailySongs.find((d) => d.dayNumber === dayNumber) ?? null;
+  },
+
+  /**
+   * Curated featured tracks to explore and listen to immediately before searching.
+   */
+  getFeaturedCatalog(): Song[] {
+    return FEATURED_CATALOG_SONGS;
   },
 
   /**

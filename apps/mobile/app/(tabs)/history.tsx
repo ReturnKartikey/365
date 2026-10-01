@@ -11,9 +11,10 @@ import {
   Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ExternalLink, X, Calendar } from 'lucide-react-native';
+import { ExternalLink, X, Calendar, Play, Pause } from 'lucide-react-native';
 import { useTheme } from '../../src/theme/ThemeContext';
 import { SongDataService } from '../../src/services/SongDataService';
+import { GlobalAudioService } from '../../src/services/AudioService';
 import { M3Button } from '../../src/components/M3Button';
 import { HookPlayButton } from '../../src/components/HookPlayButton';
 import type { DailySong } from '@365/core';
@@ -22,6 +23,7 @@ export default function HistoryScreen() {
   const { colors, typography, shapes } = useTheme();
   const [historyItems, setHistoryItems] = useState<DailySong[]>(SongDataService.getHistory());
   const [activeDetailSong, setActiveDetailSong] = useState<DailySong | null>(null);
+  const [playingSongId, setPlayingSongId] = useState<string | null>(null);
 
   useEffect(() => {
     SongDataService.fetchLiveHistory().then((items) => {
@@ -37,15 +39,37 @@ export default function HistoryScreen() {
       song.song.externalUrls.web ||
       `https://open.spotify.com/track/${song.song.providerSongId}`;
 
+    if (Platform.OS === 'web' && typeof window !== 'undefined') {
+      window.open(url, '_blank');
+      return;
+    }
+
     try {
       const canOpen = await Linking.canOpenURL(url);
-      if (canOpen || Platform.OS === 'web') {
+      if (canOpen) {
         await Linking.openURL(url);
       } else {
         await Linking.openURL(`https://open.spotify.com/search/${encodeURIComponent(song.song.title)}`);
       }
     } catch {
       Linking.openURL(`https://open.spotify.com/search/${encodeURIComponent(song.song.title)}`);
+    }
+  };
+
+  const handleQuickPlay = async (song: DailySong, e: any) => {
+    e?.stopPropagation?.();
+    if (playingSongId === song.id) {
+      await GlobalAudioService.pause();
+      setPlayingSongId(null);
+    } else {
+      setPlayingSongId(song.id);
+      if (song.song.metadata?.previewUrl) {
+        await GlobalAudioService.playPreview(song.song.metadata.previewUrl, (status) => {
+          if (status.didJustFinish) {
+            setPlayingSongId(null);
+          }
+        });
+      }
     }
   };
 
@@ -110,7 +134,7 @@ export default function HistoryScreen() {
                         },
                       ]}
                     >
-                      {formattedDate}
+                      Day {item.dayNumber} • {formattedDate}
                     </Text>
                   </View>
 
@@ -139,6 +163,30 @@ export default function HistoryScreen() {
                     {item.song.artist}
                   </Text>
                 </View>
+
+                {/* Quick Inline Audio Play Button */}
+                <TouchableOpacity
+                  activeOpacity={0.8}
+                  onPress={(e) => handleQuickPlay(item, e)}
+                  style={[
+                    styles.quickPlayBtn,
+                    {
+                      backgroundColor:
+                        playingSongId === item.id ? colors.primary : colors.surfaceContainerHighest,
+                    },
+                  ]}
+                >
+                  {playingSongId === item.id ? (
+                    <Pause size={16} color={colors.onPrimary} fill={colors.onPrimary} />
+                  ) : (
+                    <Play
+                      size={16}
+                      color={colors.onSurface}
+                      fill={colors.onSurface}
+                      style={{ marginLeft: 2 }}
+                    />
+                  )}
+                </TouchableOpacity>
               </TouchableOpacity>
             );
           }}
@@ -320,6 +368,15 @@ const styles = StyleSheet.create({
   songArtist: {
     fontSize: 13,
     marginTop: 2,
+  },
+  quickPlayBtn: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 4,
+    marginLeft: 8,
   },
   sheetOverlay: {
     flex: 1,

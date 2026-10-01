@@ -9,10 +9,12 @@ import {
   Modal,
   ActivityIndicator,
   TextInput,
+  Linking,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { Check, AlertCircle, Music, Clock, Play, Pause } from 'lucide-react-native';
+import { Check, AlertCircle, Music, Clock, Play, Pause, ExternalLink, Sparkles, X } from 'lucide-react-native';
 import { useTheme } from '../../src/theme/ThemeContext';
 import { useAuth } from '../../src/services/AuthContext';
 import { SongDataService } from '../../src/services/SongDataService';
@@ -70,6 +72,9 @@ export default function SubmitScreen() {
     return () => clearTimeout(timer);
   }, [searchQuery]);
 
+  // Curated 25 songs to explore and listen immediately
+  const featuredSongs = SongDataService.getFeaturedCatalog();
+
   // Hook audio playback state
   const [hookPlayingId, setHookPlayingId] = useState<string | null>(null);
   const [hookStatus, setHookStatus] = useState<'idle' | 'playing' | 'paused' | 'completed'>('idle');
@@ -96,10 +101,11 @@ export default function SubmitScreen() {
     setHookPlayingId(song.id);
     setHookStatus('playing');
 
-    const durationSeconds = 15;
+    const durationSeconds = 30;
+    const previewUrl = song.metadata?.previewUrl || (song as any).previewUrl;
 
-    if (song.metadata?.previewUrl) {
-      const ok = await GlobalAudioService.playPreview(song.metadata.previewUrl, (status) => {
+    if (previewUrl) {
+      const ok = await GlobalAudioService.playPreview(previewUrl, (status) => {
         if (status.didJustFinish) {
           setHookStatus('completed');
           setHookPlayingId(null);
@@ -120,25 +126,53 @@ export default function SubmitScreen() {
     }, durationSeconds * 1000);
   };
 
+  const handleTogglePlay = async (song: Song, e?: any) => {
+    e?.stopPropagation?.();
+    if (hookPlayingId === song.id && hookStatus === 'playing') {
+      await GlobalAudioService.pause();
+      setHookStatus('paused');
+    } else if (hookPlayingId === song.id && hookStatus === 'paused') {
+      const previewUrl = song.metadata?.previewUrl || (song as any).previewUrl;
+      if (previewUrl) {
+        const ok = await GlobalAudioService.playPreview(previewUrl, (status) => {
+          if (status.didJustFinish) {
+            setHookStatus('completed');
+            setHookPlayingId(null);
+          }
+        });
+        if (ok) setHookStatus('playing');
+      }
+    } else {
+      await playSongHook(song);
+    }
+  };
+
+  const handleOpenSpotify = (song: Song, e?: any) => {
+    e?.stopPropagation?.();
+    const url =
+      song.externalUrls?.spotify ||
+      song.externalUrls?.web ||
+      (song.providerSongId ? `https://open.spotify.com/track/${song.providerSongId}` : null) ||
+      `https://open.spotify.com/search/${encodeURIComponent(song.title + ' ' + song.artist)}`;
+
+    if (Platform.OS === 'web' && typeof window !== 'undefined') {
+      window.open(url, '_blank');
+      return;
+    }
+
+    try {
+      Linking.openURL(url).catch(() => {
+        Linking.openURL(`https://open.spotify.com/search/${encodeURIComponent(song.title + ' ' + song.artist)}`);
+      });
+    } catch {
+      Linking.openURL(`https://open.spotify.com/search/${encodeURIComponent(song.title + ' ' + song.artist)}`);
+    }
+  };
+
   const handleSelectSong = async (song: Song) => {
     if (selectedSong?.id === song.id) {
       // Toggle play / pause when already selected
-      if (hookStatus === 'playing') {
-        await GlobalAudioService.pause();
-        setHookStatus('paused');
-      } else if (hookStatus === 'paused') {
-        if (song.metadata?.previewUrl) {
-          const ok = await GlobalAudioService.playPreview(song.metadata.previewUrl, (status) => {
-            if (status.didJustFinish) {
-              setHookStatus('completed');
-              setHookPlayingId(null);
-            }
-          });
-          if (ok) setHookStatus('playing');
-        }
-      } else {
-        await playSongHook(song);
-      }
+      await handleTogglePlay(song);
     } else {
       setSelectedSong(song);
       await playSongHook(song);
@@ -222,6 +256,118 @@ export default function SubmitScreen() {
     } catch (e) {
       console.error(e);
     }
+  };
+
+  const renderSongRow = (item: Song) => {
+    const isSelected = selectedSong?.id === item.id;
+    const isPlaying = hookPlayingId === item.id && hookStatus === 'playing';
+
+    return (
+      <TouchableOpacity
+        key={item.id}
+        activeOpacity={0.7}
+        onPress={() => handleSelectSong(item)}
+        style={[
+          styles.resultItem,
+          {
+            backgroundColor: isSelected
+              ? colors.secondaryContainer
+              : colors.surfaceContainerLow,
+            borderRadius: shapes.large,
+            borderColor: isSelected ? colors.primary : 'transparent',
+            borderWidth: isSelected ? 1.5 : 0,
+          },
+        ]}
+      >
+        <Image
+          source={{ uri: item.artworkUrl }}
+          style={[styles.resultArtwork, { borderRadius: shapes.medium }]}
+        />
+        <View style={styles.resultDetails}>
+          <Text
+            style={[
+              styles.trackTitle,
+              {
+                color: isSelected ? colors.onSecondaryContainer : colors.onSurface,
+                fontFamily: typography.titleMedium.fontFamilySans,
+              },
+            ]}
+            numberOfLines={1}
+          >
+            {item.title}
+          </Text>
+          <Text
+            style={[
+              styles.trackArtist,
+              {
+                color: isSelected ? colors.onSecondaryContainer : colors.onSurfaceVariant,
+                fontFamily: typography.bodyMedium.fontFamilySans,
+              },
+            ]}
+            numberOfLines={1}
+          >
+            {item.artist}
+          </Text>
+        </View>
+
+        <View style={styles.actionButtonsRow}>
+          {/* Audio preview play/pause */}
+          <TouchableOpacity
+            activeOpacity={0.7}
+            onPress={(e) => handleTogglePlay(item, e)}
+            style={[
+              styles.iconButton,
+              {
+                backgroundColor: isPlaying
+                  ? colors.primary
+                  : colors.surfaceContainerHigh,
+                borderRadius: shapes.full,
+              },
+            ]}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
+            {isPlaying ? (
+              <Pause size={15} color={colors.onPrimary} fill={colors.onPrimary} />
+            ) : (
+              <Play
+                size={15}
+                color={colors.onSurface}
+                fill={colors.onSurface}
+                style={{ marginLeft: 2 }}
+              />
+            )}
+          </TouchableOpacity>
+
+          {/* Direct Spotify link */}
+          <TouchableOpacity
+            activeOpacity={0.7}
+            onPress={(e) => handleOpenSpotify(item, e)}
+            style={[
+              styles.iconButton,
+              {
+                backgroundColor: colors.surfaceContainerHigh,
+                borderRadius: shapes.full,
+              },
+            ]}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
+            <ExternalLink size={14} color={colors.primary} />
+          </TouchableOpacity>
+
+          {/* Selected indicator */}
+          {isSelected && (
+            <View
+              style={[
+                styles.selectedCheck,
+                { backgroundColor: colors.primary, borderRadius: shapes.full },
+              ]}
+            >
+              <Check size={13} color={colors.onPrimary} strokeWidth={3} />
+            </View>
+          )}
+        </View>
+      </TouchableOpacity>
+    );
   };
 
   return (
@@ -321,7 +467,7 @@ export default function SubmitScreen() {
           placeholder="Search song or artist..."
         />
 
-        {/* Search Results List */}
+        {/* Search Results / Featured Catalog List */}
         {isSearching ? (
           <View style={styles.centerState}>
             <ActivityIndicator color={colors.primary} size="small" />
@@ -331,77 +477,12 @@ export default function SubmitScreen() {
             data={searchResults}
             keyExtractor={(item) => item.id}
             keyboardShouldPersistTaps="handled"
-            contentContainerStyle={styles.resultsList}
-            renderItem={({ item }) => {
-              const isSelected = selectedSong?.id === item.id;
-              return (
-                <TouchableOpacity
-                  activeOpacity={0.7}
-                  onPress={() => handleSelectSong(item)}
-                  style={[
-                    styles.resultItem,
-                    {
-                      backgroundColor: isSelected
-                        ? colors.secondaryContainer
-                        : colors.surfaceContainerLow,
-                      borderRadius: shapes.large,
-                      borderColor: isSelected ? colors.primary : 'transparent',
-                      borderWidth: isSelected ? 1 : 0,
-                    },
-                  ]}
-                >
-                  <Image
-                    source={{ uri: item.artworkUrl }}
-                    style={[styles.resultArtwork, { borderRadius: shapes.medium }]}
-                  />
-                  <View style={styles.resultDetails}>
-                    <Text
-                      style={[
-                        styles.trackTitle,
-                        {
-                          color: isSelected ? colors.onSecondaryContainer : colors.onSurface,
-                          fontFamily: typography.titleMedium.fontFamilySans,
-                        },
-                      ]}
-                      numberOfLines={1}
-                    >
-                      {item.title}
-                    </Text>
-                    <Text
-                      style={[
-                        styles.trackArtist,
-                        {
-                          color: isSelected ? colors.onSecondaryContainer : colors.onSurfaceVariant,
-                          fontFamily: typography.bodyMedium.fontFamilySans,
-                        },
-                      ]}
-                      numberOfLines={1}
-                    >
-                      {item.artist}
-                    </Text>
-                  </View>
-                  {isSelected && (
-                    <View
-                      style={[
-                        styles.checkBadge,
-                        { backgroundColor: colors.primary, borderRadius: shapes.full },
-                      ]}
-                    >
-                      {hookPlayingId === item.id && hookStatus === 'playing' ? (
-                        <Pause size={16} color={colors.onPrimary} fill={colors.onPrimary} />
-                      ) : (
-                        <Play
-                          size={16}
-                          color={colors.onPrimary}
-                          fill={colors.onPrimary}
-                          style={{ marginLeft: 2 }}
-                        />
-                      )}
-                    </View>
-                  )}
-                </TouchableOpacity>
-              );
-            }}
+            contentContainerStyle={[
+              styles.resultsList,
+              selectedSong ? { paddingBottom: 220 } : null,
+            ]}
+            showsVerticalScrollIndicator={false}
+            renderItem={({ item }) => renderSongRow(item)}
           />
         ) : searchQuery.length > 0 ? (
           <View style={styles.centerState}>
@@ -418,19 +499,32 @@ export default function SubmitScreen() {
             </Text>
           </View>
         ) : (
-          <View style={styles.emptyPromptState}>
-            <Music size={36} color={colors.outlineVariant} />
-            <Text
-              style={[
-                styles.emptyPromptText,
-                {
-                  color: colors.onSurfaceVariant,
-                  fontFamily: typography.bodyMedium.fontFamilySans,
-                },
+          <View style={{ flex: 1, marginTop: 10 }}>
+            <View style={styles.featuredHeader}>
+              <Sparkles size={16} color={colors.primary} />
+              <Text
+                style={[
+                  styles.featuredHeaderText,
+                  {
+                    color: colors.primary,
+                    fontFamily: typography.labelLarge.fontFamilySans,
+                  },
+                ]}
+              >
+                Featured Library ({featuredSongs.length} Songs)
+              </Text>
+            </View>
+            <FlatList
+              data={featuredSongs}
+              keyExtractor={(item) => item.id}
+              keyboardShouldPersistTaps="handled"
+              contentContainerStyle={[
+                styles.resultsList,
+                selectedSong ? { paddingBottom: 220 } : null,
               ]}
-            >
-              Type a track or artist name to explore the catalog and submit.
-            </Text>
+              showsVerticalScrollIndicator={false}
+              renderItem={({ item }) => renderSongRow(item)}
+            />
           </View>
         )}
 
@@ -447,30 +541,69 @@ export default function SubmitScreen() {
           >
             <View style={styles.confirmContent}>
               <View style={styles.footerTrackMeta}>
-                <Text
+                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <View style={{ flex: 1, marginRight: 10 }}>
+                    <Text
+                      style={[
+                        styles.confirmingTitle,
+                        {
+                          color: colors.onSurface,
+                          fontFamily: typography.titleSmall.fontFamilySans,
+                        },
+                      ]}
+                      numberOfLines={1}
+                    >
+                      Selected: "{selectedSong.title}"
+                    </Text>
+                    <Text
+                      style={[
+                        styles.confirmingArtist,
+                        {
+                          color: colors.onSurfaceVariant,
+                          fontFamily: typography.bodySmall.fontFamilySans,
+                        },
+                      ]}
+                      numberOfLines={1}
+                    >
+                      by {selectedSong.artist}
+                    </Text>
+                  </View>
+
+                  {/* Close / Deselect */}
+                  <TouchableOpacity
+                    onPress={() => setSelectedSong(null)}
+                    style={styles.closeDeselectButton}
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                  >
+                    <X size={18} color={colors.onSurfaceVariant} />
+                  </TouchableOpacity>
+                </View>
+
+                {/* Listen on Spotify Quick Pill */}
+                <TouchableOpacity
+                  activeOpacity={0.7}
+                  onPress={(e) => handleOpenSpotify(selectedSong, e)}
                   style={[
-                    styles.confirmingTitle,
+                    styles.spotifyPill,
                     {
-                      color: colors.onSurface,
-                      fontFamily: typography.titleSmall.fontFamilySans,
+                      backgroundColor: colors.surfaceContainerLow,
+                      borderColor: colors.outlineVariant,
                     },
                   ]}
-                  numberOfLines={1}
                 >
-                  Submit "{selectedSong.title}"
-                </Text>
-                <Text
-                  style={[
-                    styles.confirmingArtist,
-                    {
-                      color: colors.onSurfaceVariant,
-                      fontFamily: typography.bodySmall.fontFamilySans,
-                    },
-                  ]}
-                  numberOfLines={1}
-                >
-                  by {selectedSong.artist}
-                </Text>
+                  <ExternalLink size={13} color={colors.primary} />
+                  <Text
+                    style={[
+                      styles.spotifyPillText,
+                      {
+                        color: colors.primary,
+                        fontFamily: typography.labelMedium.fontFamilySans,
+                      },
+                    ]}
+                  >
+                    Listen on Spotify
+                  </Text>
+                </TouchableOpacity>
               </View>
 
               <TextInput
@@ -698,6 +831,58 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 6,
+  },
+  actionButtonsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginLeft: 8,
+  },
+  iconButton: {
+    width: 34,
+    height: 34,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  selectedCheck: {
+    width: 22,
+    height: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginLeft: 2,
+  },
+  featuredHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 10,
+    marginTop: 4,
+  },
+  featuredHeaderText: {
+    fontSize: 12,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 0.6,
+  },
+  closeDeselectButton: {
+    padding: 6,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  spotifyPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    alignSelf: 'flex-start',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    borderWidth: 1,
+    marginTop: 8,
+  },
+  spotifyPillText: {
+    fontSize: 12,
+    fontWeight: '600',
   },
   centerState: {
     flex: 1,

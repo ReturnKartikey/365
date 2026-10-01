@@ -37,7 +37,30 @@ interface SpotifySearchResponse {
 }
 
 /**
- * Curated offline fallback songs used when Spotify credentials are not configured or in offline mode.
+ * Cross-platform safe base64 encoder that works in React Native, Node.js, and browsers.
+ */
+function safeBase64Encode(str: string): string {
+  if (typeof btoa === 'function') {
+    return btoa(str);
+  }
+  if (typeof Buffer !== 'undefined') {
+    return Buffer.from(str).toString('base64');
+  }
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=';
+  let output = '';
+  for (
+    let block = 0, charCode, idx = 0, map = chars;
+    str.charAt(idx | 0) || ((map = '='), idx % 1);
+    output += map.charAt(63 & (block >> (8 - (idx % 1) * 8)))
+  ) {
+    charCode = str.charCodeAt((idx += 3 / 4));
+    block = (block << 8) | charCode;
+  }
+  return output;
+}
+
+/**
+ * Curated offline fallback songs with official album covers and real audio preview URLs.
  */
 export const SAMPLE_FALLBACK_TRACKS: Song[] = [
   {
@@ -45,7 +68,8 @@ export const SAMPLE_FALLBACK_TRACKS: Song[] = [
     title: 'Texas Sun',
     artist: 'Leon Bridges, Khruangbin',
     album: 'Texas Sun - EP',
-    artworkUrl: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?auto=format&fit=crop&w=800&q=80',
+    artworkUrl:
+      'https://is1-ssl.mzstatic.com/image/thumb/Music115/v4/ed/90/53/ed9053df-0476-f6aa-d7f2-8664fc589904/656605151465.jpg/600x600bb.jpg',
     provider: 'spotify',
     providerSongId: '6rqhFgbbKwnb9MLmUQDhG6',
     externalUrls: {
@@ -54,6 +78,8 @@ export const SAMPLE_FALLBACK_TRACKS: Song[] = [
     },
     metadata: {
       durationMs: 252000,
+      previewUrl:
+        'https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview221/v4/64/0d/bc/640dbc64-93ac-1322-20bf-0c929bfcadb6/mzaf_10048206250487462970.plus.aac.p.m4a',
       isExplicit: false,
       genre: 'Soul / Psychedelic Rock',
       releaseYear: 2020,
@@ -71,7 +97,8 @@ export const SAMPLE_FALLBACK_TRACKS: Song[] = [
     title: 'Blinding Lights',
     artist: 'The Weeknd',
     album: 'After Hours',
-    artworkUrl: 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?auto=format&fit=crop&w=800&q=80',
+    artworkUrl:
+      'https://is1-ssl.mzstatic.com/image/thumb/Music115/v4/61/e7/3f/61e73f94-018d-5f50-50ec-8521952bc72e/20UM1IM11629.rgb.jpg/600x600bb.jpg',
     provider: 'spotify',
     providerSongId: '0VjIjW4GlUZAMYd2vXMi3b',
     externalUrls: {
@@ -80,6 +107,8 @@ export const SAMPLE_FALLBACK_TRACKS: Song[] = [
     },
     metadata: {
       durationMs: 200040,
+      previewUrl:
+        'https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview211/v4/12/73/ca/1273ca46-233a-5331-189b-25ac1d656533/mzaf_976341070785891411.plus.aac.p.m4a',
       isExplicit: false,
       genre: 'Synthwave / Pop',
       releaseYear: 2019,
@@ -93,63 +122,12 @@ export const SAMPLE_FALLBACK_TRACKS: Song[] = [
     createdAt: new Date().toISOString(),
   },
   {
-    id: 'spotify_5HCyWlXZPP0y6Gqq8TgA20',
-    title: 'Stay',
-    artist: 'The Kid LAROI, Justin Bieber',
-    album: 'F*CK LOVE 3+: OVER YOU',
-    artworkUrl: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?auto=format&fit=crop&w=800&q=80',
-    provider: 'spotify',
-    providerSongId: '5HCyWlXZPP0y6Gqq8TgA20',
-    externalUrls: {
-      spotify: 'https://open.spotify.com/track/5HCyWlXZPP0y6Gqq8TgA20',
-      web: 'https://open.spotify.com/track/5HCyWlXZPP0y6Gqq8TgA20',
-    },
-    metadata: {
-      durationMs: 141806,
-      isExplicit: true,
-      genre: 'Pop',
-      releaseYear: 2021,
-      palette: {
-        dominant: '#3D5A80',
-        primary: '#4D729F',
-        background: '#0D131A',
-        surface: '#17222E',
-      },
-    },
-    createdAt: new Date().toISOString(),
-  },
-  {
-    id: 'spotify_7qiZfU4dY1lWllzX7mPBI3',
-    title: 'Shape of You',
-    artist: 'Ed Sheeran',
-    album: '÷ (Divide)',
-    artworkUrl: 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?auto=format&fit=crop&w=800&q=80',
-    provider: 'spotify',
-    providerSongId: '7qiZfU4dY1lWllzX7mPBI3',
-    externalUrls: {
-      spotify: 'https://open.spotify.com/track/7qiZfU4dY1lWllzX7mPBI3',
-      web: 'https://open.spotify.com/track/7qiZfU4dY1lWllzX7mPBI3',
-    },
-    metadata: {
-      durationMs: 233712,
-      isExplicit: false,
-      genre: 'Pop',
-      releaseYear: 2017,
-      palette: {
-        dominant: '#297373',
-        primary: '#3FA7A7',
-        background: '#0D1717',
-        surface: '#162828',
-      },
-    },
-    createdAt: new Date().toISOString(),
-  },
-  {
     id: 'spotify_2WfaOiMkCvy7Z5vo2Ycrz0',
     title: 'Says',
     artist: 'Nils Frahm',
     album: 'Spaces',
-    artworkUrl: 'https://images.unsplash.com/photo-1465847899084-d164df4dedc6?auto=format&fit=crop&w=800&q=80',
+    artworkUrl:
+      'https://is1-ssl.mzstatic.com/image/thumb/Music124/v4/25/3c/3e/253c3e06-cd31-0952-1b90-4de69a77def5/4050486102855_cover.jpg/600x600bb.jpg',
     provider: 'spotify',
     providerSongId: '2WfaOiMkCvy7Z5vo2Ycrz0',
     externalUrls: {
@@ -158,6 +136,8 @@ export const SAMPLE_FALLBACK_TRACKS: Song[] = [
     },
     metadata: {
       durationMs: 518000,
+      previewUrl:
+        'https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview211/v4/36/97/9c/36979c81-c97b-2323-9ada-96fa05a94785/mzaf_546068789723583981.plus.aac.p.m4a',
       isExplicit: false,
       genre: 'Modern Classical / Ambient',
       releaseYear: 2013,
@@ -194,7 +174,11 @@ export class SpotifyProvider implements MusicProvider {
   }
 
   public getListenUrl(song: Song): string {
-    return song.externalUrls.spotify || song.externalUrls.web || `https://open.spotify.com/track/${song.providerSongId}`;
+    return (
+      song.externalUrls.spotify ||
+      song.externalUrls.web ||
+      `https://open.spotify.com/track/${song.providerSongId}`
+    );
   }
 
   private async getAccessToken(): Promise<string | null> {
@@ -208,7 +192,7 @@ export class SpotifyProvider implements MusicProvider {
     }
 
     try {
-      const basicAuth = Buffer.from(`${this.clientId}:${this.clientSecret}`).toString('base64');
+      const basicAuth = safeBase64Encode(`${this.clientId}:${this.clientSecret}`);
       const response = await this.customFetch('https://accounts.spotify.com/api/token', {
         method: 'POST',
         headers: {
@@ -227,7 +211,7 @@ export class SpotifyProvider implements MusicProvider {
       this.tokenExpiresAt = Date.now() + data.expires_in * 1000;
       return this.cachedAccessToken;
     } catch (err) {
-      console.warn('[SpotifyProvider] Failed to obtain access token, will use fallback if enabled:', err);
+      console.warn('[SpotifyProvider] Failed to obtain access token, will use fallback:', err);
       return null;
     }
   }
@@ -238,77 +222,174 @@ export class SpotifyProvider implements MusicProvider {
       return [];
     }
 
-    const token = await this.getAccessToken();
-
-    if (!token) {
-      if (this.enableFallback) {
-        return this.searchFallback(trimmed, options.limit ?? 20);
-      }
-      return [];
-    }
-
     const limit = Math.min(options.limit ?? 20, 50);
-    const offset = options.offset ?? 0;
-    const url = new URL('https://api.spotify.com/v1/search');
-    url.searchParams.set('type', 'track');
-    url.searchParams.set('q', trimmed);
-    url.searchParams.set('limit', limit.toString());
-    url.searchParams.set('offset', offset.toString());
-    if (options.market) {
-      url.searchParams.set('market', options.market);
-    }
 
-    const response = await this.customFetch(url.toString(), {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
+    // 1. Try Spotify Web API first if client credentials are valid
+    const token = await this.getAccessToken();
+    if (token) {
+      try {
+        const offset = options.offset ?? 0;
+        const url = new URL('https://api.spotify.com/v1/search');
+        url.searchParams.set('type', 'track');
+        url.searchParams.set('q', trimmed);
+        url.searchParams.set('limit', limit.toString());
+        url.searchParams.set('offset', offset.toString());
+        if (options.market) {
+          url.searchParams.set('market', options.market);
+        }
 
-    if (!response.ok) {
-      console.warn(`[SpotifyProvider] Search failed with status ${response.status}`);
-      if (this.enableFallback) {
-        return this.searchFallback(trimmed, limit);
+        const response = await this.customFetch(url.toString(), {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+
+        if (response.ok) {
+          const data = (await response.json()) as SpotifySearchResponse;
+          const items = data.tracks?.items ?? [];
+          if (items.length > 0) {
+            return items.map((track) => this.mapSpotifyTrack(track));
+          }
+        }
+      } catch (err) {
+        console.warn('[SpotifyProvider] Spotify API search error, falling back to open music catalog:', err);
       }
-      return [];
     }
 
-    const data = (await response.json()) as SpotifySearchResponse;
-    const items = data.tracks?.items ?? [];
+    // 2. High-fidelity Live Open Music Catalog Search (iTunes Search API)
+    // Returns real songs, real artists, real high-res album covers, and real 30s playable audio previews!
+    try {
+      const liveSongs = await this.searchLiveMusicCatalog(trimmed, limit);
+      if (liveSongs.length > 0) {
+        return liveSongs;
+      }
+    } catch (err) {
+      console.warn('[SpotifyProvider] Live music catalog search error:', err);
+    }
 
-    return items.map((track) => this.mapSpotifyTrack(track));
+    // 3. Offline fallback
+    if (this.enableFallback) {
+      return this.searchFallback(trimmed, limit);
+    }
+    return [];
   }
 
   public async getTrack(trackId: string): Promise<Song | null> {
+    const cleanTrackId = trackId.replace(/^spotify_/, '').replace(/^itunes_/, '');
+
+    // 1. Try Spotify if token available
     const token = await this.getAccessToken();
-
-    if (!token) {
-      if (this.enableFallback) {
-        const found = SAMPLE_FALLBACK_TRACKS.find(
-          (t) => t.providerSongId === trackId || t.id === trackId
-        );
-        return found ?? null;
-      }
-      return null;
+    if (token) {
+      try {
+        const response = await this.customFetch(`https://api.spotify.com/v1/tracks/${cleanTrackId}`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+        if (response.ok) {
+          const track = (await response.json()) as SpotifyTrackItem;
+          return this.mapSpotifyTrack(track);
+        }
+      } catch {}
     }
 
-    const cleanTrackId = trackId.replace(/^spotify_/, '');
-    const response = await this.customFetch(`https://api.spotify.com/v1/tracks/${cleanTrackId}`, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
+    // 2. Try live open music catalog lookup
+    try {
+      const response = await this.customFetch(`https://itunes.apple.com/lookup?id=${cleanTrackId}`);
+      if (response.ok) {
+        const data = (await response.json()) as any;
+        if (data.results?.[0]) {
+          const r = data.results[0];
+          return {
+            id: this.getDeterministicId(String(r.trackId)),
+            title: r.trackName,
+            artist: r.artistName,
+            album: r.collectionName,
+            artworkUrl: r.artworkUrl100
+              ? r.artworkUrl100.replace('100x100bb', '600x600bb')
+              : 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?auto=format&fit=crop&w=800&q=80',
+            provider: 'spotify',
+            providerSongId: String(r.trackId),
+            externalUrls: {
+              spotify: `https://open.spotify.com/search/${encodeURIComponent(r.trackName + ' ' + r.artistName)}`,
+              web: r.trackViewUrl || `https://open.spotify.com/search/${encodeURIComponent(r.trackName + ' ' + r.artistName)}`,
+            },
+            metadata: {
+              durationMs: r.trackTimeMillis || 180000,
+              previewUrl: r.previewUrl || null,
+              isExplicit: r.trackExplicitness === 'explicit',
+              genre: r.primaryGenreName || 'Music',
+              releaseYear: r.releaseDate ? new Date(r.releaseDate).getFullYear() : undefined,
+              palette: {
+                dominant: '#C67D5A',
+                primary: '#C67D5A',
+                background: '#1A1412',
+                surface: '#2B201D',
+              },
+            },
+            createdAt: new Date().toISOString(),
+          };
+        }
+      }
+    } catch {}
+
+    // 3. Fallback
+    if (this.enableFallback) {
+      return (
+        SAMPLE_FALLBACK_TRACKS.find(
+          (t) => t.providerSongId === cleanTrackId || t.id === trackId
+        ) ?? null
+      );
+    }
+    return null;
+  }
+
+  private async searchLiveMusicCatalog(query: string, limit: number): Promise<Song[]> {
+    const itunesUrl = `https://itunes.apple.com/search?term=${encodeURIComponent(query)}&entity=song&limit=${limit}`;
+    const response = await this.customFetch(itunesUrl);
+    if (!response.ok) return [];
+
+    const data = (await response.json()) as any;
+    const results = (data.results || []) as any[];
+
+    return results.map((r): Song => {
+      // High-resolution album artwork (600x600)
+      const artworkUrl = r.artworkUrl100
+        ? r.artworkUrl100.replace('100x100bb', '600x600bb')
+        : 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?auto=format&fit=crop&w=800&q=80';
+
+      const songId = this.getDeterministicId(String(r.trackId));
+      const trackName = r.trackName || 'Unknown Title';
+      const artistName = r.artistName || 'Unknown Artist';
+
+      return {
+        id: songId,
+        title: trackName,
+        artist: artistName,
+        album: r.collectionName || trackName,
+        artworkUrl,
+        provider: 'spotify',
+        providerSongId: String(r.trackId),
+        externalUrls: {
+          spotify: `https://open.spotify.com/search/${encodeURIComponent(trackName + ' ' + artistName)}`,
+          web: r.trackViewUrl || `https://open.spotify.com/search/${encodeURIComponent(trackName + ' ' + artistName)}`,
+        },
+        metadata: {
+          durationMs: r.trackTimeMillis || 180000,
+          previewUrl: r.previewUrl || null,
+          isExplicit: r.trackExplicitness === 'explicit',
+          genre: r.primaryGenreName || 'Music',
+          releaseYear: r.releaseDate ? new Date(r.releaseDate).getFullYear() : undefined,
+          palette: {
+            dominant: '#C67D5A',
+            primary: '#C67D5A',
+            background: '#1A1412',
+            surface: '#2B201D',
+          },
+        },
+        createdAt: new Date().toISOString(),
+      };
     });
-
-    if (!response.ok) {
-      if (response.status === 404) return null;
-      console.warn(`[SpotifyProvider] GetTrack failed with status ${response.status}`);
-      if (this.enableFallback) {
-        return SAMPLE_FALLBACK_TRACKS.find((t) => t.providerSongId === cleanTrackId) ?? null;
-      }
-      return null;
-    }
-
-    const track = (await response.json()) as SpotifyTrackItem;
-    return this.mapSpotifyTrack(track);
   }
 
   private searchFallback(query: string, limit: number): Song[] {
@@ -324,34 +405,7 @@ export class SpotifyProvider implements MusicProvider {
       return matches.slice(0, limit);
     }
 
-    // If query didn't match the sample list, return a mock result modeled on the user query
-    // so testers can always interact with the search UI even offline
-    const syntheticTrack: Song = {
-      id: this.getDeterministicId(`sim_${encodeURIComponent(query.slice(0, 16))}`),
-      title: query.charAt(0).toUpperCase() + query.slice(1),
-      artist: 'Simulated Artist',
-      album: 'Discovery Edition',
-      artworkUrl: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?auto=format&fit=crop&w=800&q=80',
-      provider: 'spotify',
-      providerSongId: `sim_${encodeURIComponent(query.slice(0, 16))}`,
-      externalUrls: {
-        spotify: `https://open.spotify.com/search/${encodeURIComponent(query)}`,
-        web: `https://open.spotify.com/search/${encodeURIComponent(query)}`,
-      },
-      metadata: {
-        durationMs: 215000,
-        isExplicit: false,
-        palette: {
-          dominant: '#3D5A80',
-          primary: '#5C7EAA',
-          background: '#0F151C',
-          surface: '#1A2430',
-        },
-      },
-      createdAt: new Date().toISOString(),
-    };
-
-    return [syntheticTrack, ...SAMPLE_FALLBACK_TRACKS.slice(0, limit - 1)];
+    return SAMPLE_FALLBACK_TRACKS.slice(0, limit);
   }
 
   private mapSpotifyTrack(track: SpotifyTrackItem): Song {

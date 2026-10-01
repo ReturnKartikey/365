@@ -18,6 +18,7 @@ import { useAuth } from '../../src/services/AuthContext';
 import { SongDataService } from '../../src/services/SongDataService';
 import { M3SearchBar } from '../../src/components/M3SearchBar';
 import { M3Button } from '../../src/components/M3Button';
+import { GlobalAudioService } from '../../src/services/AudioService';
 import type { Song, Submission } from '@365/core';
 
 export default function SubmitScreen() {
@@ -72,26 +73,16 @@ export default function SubmitScreen() {
   // Hook audio playback state
   const [hookPlayingId, setHookPlayingId] = useState<string | null>(null);
   const [hookStatus, setHookStatus] = useState<'idle' | 'playing' | 'paused' | 'completed'>('idle');
-  const audioElementRef = useRef<HTMLAudioElement | null>(null);
-  const audioContextRef = useRef<any>(null);
   const hookTimerRef = useRef<any>(null);
 
-  const stopSongHook = () => {
+  const stopSongHook = async () => {
     if (hookTimerRef.current) {
       clearTimeout(hookTimerRef.current);
       hookTimerRef.current = null;
     }
-    if (audioElementRef.current) {
-      audioElementRef.current.pause();
-      audioElementRef.current.currentTime = 0;
-      audioElementRef.current = null;
-    }
-    if (audioContextRef.current) {
-      try {
-        audioContextRef.current.close();
-      } catch {}
-      audioContextRef.current = null;
-    }
+    await GlobalAudioService.stop();
+    setHookPlayingId(null);
+    setHookStatus('idle');
   };
 
   useEffect(() => {
@@ -100,104 +91,57 @@ export default function SubmitScreen() {
     };
   }, []);
 
-  const playSynthesizedHookFor = (song: Song, duration: number) => {
-    if (typeof window === 'undefined') return;
-    try {
-      const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
-      if (!AudioCtx) return;
-      const ctx = new AudioCtx();
-      audioContextRef.current = ctx;
-
-      const titleLower = song.title.toLowerCase();
-      const isSynthwave = titleLower.includes('blind') || titleLower.includes('stay') || titleLower.includes('light');
-
-      const chords = isSynthwave
-        ? [
-            [261.63, 311.13, 392.0], // Cm (Blinding Lights intro)
-            [220.0, 261.63, 329.63], // Bb/Am
-            [174.61, 220.0, 261.63], // F
-            [196.0, 246.94, 293.66], // G
-          ]
-        : [
-            [146.83, 220.0, 277.18, 329.63], // Dmaj7
-            [185.0, 220.0, 277.18],          // F#m
-            [196.0, 246.94, 293.66],         // G
-            [220.0, 277.18, 329.63],         // A
-          ];
-
-      const masterGain = ctx.createGain();
-      masterGain.gain.setValueAtTime(0.18, ctx.currentTime);
-      masterGain.connect(ctx.destination);
-
-      const filter = ctx.createBiquadFilter();
-      filter.type = isSynthwave ? 'bandpass' : 'lowpass';
-      filter.frequency.setValueAtTime(isSynthwave ? 2200 : 1300, ctx.currentTime);
-      filter.connect(masterGain);
-
-      const chordDuration = duration / chords.length;
-      chords.forEach((chord, cIdx) => {
-        const cStart = ctx.currentTime + cIdx * chordDuration;
-        chord.forEach((freq, nIdx) => {
-          const osc = ctx.createOscillator();
-          const gain = ctx.createGain();
-          osc.type = isSynthwave ? 'sawtooth' : 'triangle';
-          osc.frequency.setValueAtTime(freq, cStart);
-
-          gain.gain.setValueAtTime(0.001, cStart + nIdx * 0.02);
-          gain.gain.exponentialRampToValueAtTime(0.3 / chord.length, cStart + nIdx * 0.02 + 0.05);
-          gain.gain.exponentialRampToValueAtTime(0.001, cStart + chordDuration - 0.04);
-
-          osc.connect(gain);
-          gain.connect(filter);
-          osc.start(cStart + nIdx * 0.02);
-          osc.stop(cStart + chordDuration);
-        });
-      });
-    } catch (e) {
-      console.warn('Synthesis error:', e);
-    }
-  };
-
-  const playSongHook = (song: Song) => {
-    stopSongHook();
+  const playSongHook = async (song: Song) => {
+    await stopSongHook();
     setHookPlayingId(song.id);
     setHookStatus('playing');
 
     const durationSeconds = 15;
 
-    if (song.metadata?.previewUrl && typeof window !== 'undefined' && window.Audio) {
-      try {
-        const audio = new window.Audio(song.metadata.previewUrl);
-        audioElementRef.current = audio;
-        audio.play().catch(() => playSynthesizedHookFor(song, durationSeconds));
-        audio.onended = () => {
+    if (song.metadata?.previewUrl) {
+      const ok = await GlobalAudioService.playPreview(song.metadata.previewUrl, (status) => {
+        if (status.didJustFinish) {
           setHookStatus('completed');
-        };
-      } catch {
-        playSynthesizedHookFor(song, durationSeconds);
+          setHookPlayingId(null);
+        }
+      });
+      if (!ok) {
+        setHookStatus('idle');
+        setHookPlayingId(null);
       }
     } else {
-      playSynthesizedHookFor(song, durationSeconds);
+      setHookStatus('idle');
+      setHookPlayingId(null);
     }
 
-    hookTimerRef.current = setTimeout(() => {
-      stopSongHook();
+    hookTimerRef.current = setTimeout(async () => {
+      await stopSongHook();
       setHookStatus('completed');
     }, durationSeconds * 1000);
   };
 
-  const handleSelectSong = (song: Song) => {
+  const handleSelectSong = async (song: Song) => {
     if (selectedSong?.id === song.id) {
       // Toggle play / pause when already selected
       if (hookStatus === 'playing') {
-        stopSongHook();
+        await GlobalAudioService.pause();
         setHookStatus('paused');
+      } else if (hookStatus === 'paused') {
+        if (song.metadata?.previewUrl) {
+          const ok = await GlobalAudioService.playPreview(song.metadata.previewUrl, (status) => {
+            if (status.didJustFinish) {
+              setHookStatus('completed');
+              setHookPlayingId(null);
+            }
+          });
+          if (ok) setHookStatus('playing');
+        }
       } else {
-        playSongHook(song);
+        await playSongHook(song);
       }
     } else {
       setSelectedSong(song);
-      playSongHook(song);
+      await playSongHook(song);
     }
   };
 

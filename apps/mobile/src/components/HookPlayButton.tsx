@@ -18,6 +18,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { Play, Pause } from 'lucide-react-native';
 import { useTheme } from '../theme/ThemeContext';
+import { GlobalAudioService } from '../services/AudioService';
 import type { Song } from '@365/core';
 
 interface HookPlayButtonProps {
@@ -43,10 +44,6 @@ export const HookPlayButton: React.FC<HookPlayButtonProps> = ({
   const timerIntervalRef = useRef<any>(null);
   const totalMs = durationSeconds * 1000;
   const currentProgressRef = useRef<number>(0);
-  const startTimeRef = useRef<number>(0);
-  const audioElementRef = useRef<HTMLAudioElement | null>(null);
-  const audioContextRef = useRef<any>(null);
-  const synthNodesRef = useRef<any[]>([]);
 
   // Cleanup on unmount or song change
   useEffect(() => {
@@ -55,63 +52,7 @@ export const HookPlayButton: React.FC<HookPlayButtonProps> = ({
     };
   }, [song.id]);
 
-  const startSynthesizedHook = () => {
-    if (typeof window === 'undefined') return;
-    try {
-      const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
-      if (!AudioCtx) return;
-
-      const ctx = new AudioCtx();
-      audioContextRef.current = ctx;
-
-      const chords = [
-        [146.83, 220.0, 277.18, 329.63, 440.0],
-        [185.0, 220.0, 277.18, 329.63, 440.0],
-        [196.0, 246.94, 293.66, 369.99, 440.0],
-        [220.0, 277.18, 329.63, 392.0, 493.88],
-      ];
-
-      const masterGain = ctx.createGain();
-      masterGain.gain.setValueAtTime(0.18, ctx.currentTime);
-      masterGain.connect(ctx.destination);
-
-      const filter = ctx.createBiquadFilter();
-      filter.type = 'lowpass';
-      filter.frequency.setValueAtTime(1400, ctx.currentTime);
-      filter.connect(masterGain);
-
-      const chordDuration = durationSeconds / chords.length;
-
-      chords.forEach((chord, chordIdx) => {
-        const chordStartTime = ctx.currentTime + chordIdx * chordDuration;
-
-        chord.forEach((freq, noteIdx) => {
-          const osc = ctx.createOscillator();
-          const noteGain = ctx.createGain();
-
-          osc.type = noteIdx === 0 ? 'triangle' : 'sine';
-          osc.frequency.setValueAtTime(freq, chordStartTime);
-
-          const noteOffset = noteIdx * 0.03;
-          noteGain.gain.setValueAtTime(0.001, chordStartTime + noteOffset);
-          noteGain.gain.exponentialRampToValueAtTime(0.35 / chord.length, chordStartTime + noteOffset + 0.08);
-          noteGain.gain.exponentialRampToValueAtTime(0.001, chordStartTime + chordDuration - 0.05);
-
-          osc.connect(noteGain);
-          noteGain.connect(filter);
-
-          osc.start(chordStartTime + noteOffset);
-          osc.stop(chordStartTime + chordDuration);
-
-          synthNodesRef.current.push(osc);
-        });
-      });
-    } catch (e) {
-      console.warn('Web Audio synthesis fallback not available:', e);
-    }
-  };
-
-  const stopPlayback = () => {
+  const stopPlayback = async () => {
     setIsPlaying(false);
     setRemainingSeconds(durationSeconds);
     currentProgressRef.current = 0;
@@ -126,22 +67,10 @@ export const HookPlayButton: React.FC<HookPlayButtonProps> = ({
       timerIntervalRef.current = null;
     }
 
-    if (audioElementRef.current) {
-      audioElementRef.current.pause();
-      audioElementRef.current.currentTime = 0;
-      audioElementRef.current = null;
-    }
-
-    if (audioContextRef.current) {
-      try {
-        audioContextRef.current.close();
-      } catch {}
-      audioContextRef.current = null;
-    }
-    synthNodesRef.current = [];
+    await GlobalAudioService.stop();
   };
 
-  const pausePlayback = () => {
+  const pausePlayback = async () => {
     setIsPlaying(false);
     cancelAnimation(progressAnim);
     cancelAnimation(pulseAnim);
@@ -152,15 +81,7 @@ export const HookPlayButton: React.FC<HookPlayButtonProps> = ({
       timerIntervalRef.current = null;
     }
 
-    if (audioElementRef.current) {
-      audioElementRef.current.pause();
-    }
-
-    if (audioContextRef.current) {
-      try {
-        audioContextRef.current.suspend();
-      } catch {}
-    }
+    await GlobalAudioService.pause();
   };
 
   const startAnimationLoop = (fromFraction: number) => {
@@ -207,37 +128,21 @@ export const HookPlayButton: React.FC<HookPlayButtonProps> = ({
     }, 1000);
   };
 
-  const handleTogglePlay = () => {
+  const handleTogglePlay = async () => {
     if (isPlaying) {
-      pausePlayback();
+      await pausePlayback();
     } else {
       setIsPlaying(true);
       const current = currentProgressRef.current;
 
-      if (current === 0) {
-        // Start fresh
-        if (song.metadata?.previewUrl && typeof window !== 'undefined' && window.Audio) {
-          try {
-            const audio = new window.Audio(song.metadata.previewUrl);
-            audioElementRef.current = audio;
-            audio.play().catch(() => startSynthesizedHook());
-          } catch {
-            startSynthesizedHook();
+      if (song.metadata?.previewUrl) {
+        await GlobalAudioService.playPreview(song.metadata.previewUrl, (status) => {
+          if (status.didJustFinish) {
+            stopPlayback();
           }
-        } else {
-          startSynthesizedHook();
-        }
-        startAnimationLoop(0);
-      } else {
-        // Resume from current progress
-        if (audioElementRef.current) {
-          audioElementRef.current.play().catch(() => {});
-        }
-        if (audioContextRef.current && audioContextRef.current.state === 'suspended') {
-          audioContextRef.current.resume();
-        }
-        startAnimationLoop(current);
+        });
       }
+      startAnimationLoop(current);
     }
   };
 

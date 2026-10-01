@@ -32,7 +32,8 @@ const INITIAL_DAILY_SONGS: DailySong[] = [
       title: 'Texas Sun',
       artist: 'Leon Bridges, Khruangbin',
       album: 'Texas Sun - EP',
-      artworkUrl: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?auto=format&fit=crop&w=1200&q=85',
+      artworkUrl:
+        'https://is1-ssl.mzstatic.com/image/thumb/Music115/v4/ed/90/53/ed9053df-0476-f6aa-d7f2-8664fc589904/656605151465.jpg/600x600bb.jpg',
       provider: 'spotify',
       providerSongId: '6rqhFgbbKwnb9MLmUQDhG6',
       externalUrls: {
@@ -41,6 +42,8 @@ const INITIAL_DAILY_SONGS: DailySong[] = [
       },
       metadata: {
         durationMs: 252000,
+        previewUrl:
+          'https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview221/v4/64/0d/bc/640dbc64-93ac-1322-20bf-0c929bfcadb6/mzaf_10048206250487462970.plus.aac.p.m4a',
         isExplicit: false,
         genre: 'Soul / Psychedelic Rock',
         releaseYear: 2020,
@@ -66,7 +69,8 @@ const INITIAL_DAILY_SONGS: DailySong[] = [
       title: 'Says',
       artist: 'Nils Frahm',
       album: 'Spaces',
-      artworkUrl: 'https://images.unsplash.com/photo-1465847899084-d164df4dedc6?auto=format&fit=crop&w=1200&q=85',
+      artworkUrl:
+        'https://is1-ssl.mzstatic.com/image/thumb/Music124/v4/25/3c/3e/253c3e06-cd31-0952-1b90-4de69a77def5/4050486102855_cover.jpg/600x600bb.jpg',
       provider: 'spotify',
       providerSongId: '2WfaOiMkCvy7Z5vo2Ycrz0',
       externalUrls: {
@@ -75,6 +79,8 @@ const INITIAL_DAILY_SONGS: DailySong[] = [
       },
       metadata: {
         durationMs: 518000,
+        previewUrl:
+          'https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview211/v4/36/97/9c/36979c81-c97b-2323-9ada-96fa05a94785/mzaf_546068789723583981.plus.aac.p.m4a',
         isExplicit: false,
         genre: 'Modern Classical',
         releaseYear: 2013,
@@ -100,7 +106,8 @@ const INITIAL_DAILY_SONGS: DailySong[] = [
       title: 'Blinding Lights',
       artist: 'The Weeknd',
       album: 'After Hours',
-      artworkUrl: 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?auto=format&fit=crop&w=1200&q=85',
+      artworkUrl:
+        'https://is1-ssl.mzstatic.com/image/thumb/Music115/v4/61/e7/3f/61e73f94-018d-5f50-50ec-8521952bc72e/20UM1IM11629.rgb.jpg/600x600bb.jpg',
       provider: 'spotify',
       providerSongId: '0VjIjW4GlUZAMYd2vXMi3b',
       externalUrls: {
@@ -109,6 +116,8 @@ const INITIAL_DAILY_SONGS: DailySong[] = [
       },
       metadata: {
         durationMs: 200040,
+        previewUrl:
+          'https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview211/v4/12/73/ca/1273ca46-233a-5331-189b-25ac1d656533/mzaf_976341070785891411.plus.aac.p.m4a',
         isExplicit: false,
         genre: 'Synthwave',
         releaseYear: 2019,

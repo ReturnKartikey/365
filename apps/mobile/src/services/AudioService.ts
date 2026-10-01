@@ -2,69 +2,25 @@ import { Platform } from 'react-native';
 
 type PlaybackListener = (status: { isPlaying: boolean; didJustFinish: boolean }) => void;
 
-export interface AudioBridge {
-  play: (url: string) => void;
-  pause: () => void;
-  stop: () => void;
-  isReady: () => boolean;
-}
-
 class ResilientAudioService {
   private currentUri: string | null = null;
   private activePlayer: any = null;
   private subscriptions: any[] = [];
   private webAudio: any = null;
-  private driver: 'bridge' | 'expo-video' | 'expo-audio' | 'web' | 'none' = 'none';
-  private bridge: AudioBridge | null = null;
-  private currentListener: PlaybackListener | null = null;
+  private driver: 'expo-video' | 'expo-audio' | 'web' | 'none' = 'none';
 
   constructor() {
     this.detectDriver();
   }
 
-  registerBridge(bridge: AudioBridge) {
-    this.bridge = bridge;
-    if (this.driver !== 'web') {
-      this.driver = 'bridge';
-    }
-  }
-
-  unregisterBridge() {
-    this.bridge = null;
-    if (this.driver === 'bridge') {
-      this.detectDriver();
-    }
-  }
-
-  notifyStatus(status: { isPlaying: boolean; didJustFinish: boolean }) {
-    if (this.currentListener) {
-      this.currentListener(status);
-    }
-  }
-
   private detectDriver() {
-    // 1. Web environment
+    // 1. Web browser environment
     if (Platform.OS === 'web' && typeof window !== 'undefined' && (window as any).Audio) {
       this.driver = 'web';
       return;
     }
 
-    // If bridge is already registered, use it
-    if (this.bridge) {
-      this.driver = 'bridge';
-      return;
-    }
-
-    // 2. expo-video
-    try {
-      const ev = require('expo-video');
-      if (ev && typeof ev.createVideoPlayer === 'function') {
-        this.driver = 'expo-video';
-        return;
-      }
-    } catch (e) {}
-
-    // 3. expo-audio fallback
+    // 2. expo-audio (development build / custom client)
     try {
       const ea = require('expo-audio');
       if (ea && typeof ea.createAudioPlayer === 'function') {
@@ -73,7 +29,23 @@ class ResilientAudioService {
       }
     } catch (e) {}
 
+    // 3. expo-video (development build / custom client)
+    try {
+      const ev = require('expo-video');
+      if (ev && typeof ev.createVideoPlayer === 'function') {
+        this.driver = 'expo-video';
+        return;
+      }
+    } catch (e) {}
+
     this.driver = 'none';
+  }
+
+  /**
+   * Returns true if physical native audio output is supported in the current runtime.
+   */
+  hasNativeAudio(): boolean {
+    return this.driver !== 'none';
   }
 
   /**
@@ -83,16 +55,10 @@ class ResilientAudioService {
     if (!uri) return false;
 
     try {
-      this.currentListener = onPlaybackStatus || null;
-
       // If already playing the same URI, resume
       if (this.currentUri === uri) {
-        if (this.bridge) {
-          this.bridge.play(uri);
-          return true;
-        }
-        if (this.driver === 'expo-video' && this.activePlayer && typeof this.activePlayer.play === 'function') {
-          this.activePlayer.play();
+        if (this.driver === 'web' && this.webAudio) {
+          this.webAudio.play().catch(() => {});
           onPlaybackStatus?.({ isPlaying: true, didJustFinish: false });
           return true;
         }
@@ -101,8 +67,8 @@ class ResilientAudioService {
           onPlaybackStatus?.({ isPlaying: true, didJustFinish: false });
           return true;
         }
-        if (this.driver === 'web' && this.webAudio) {
-          this.webAudio.play().catch(() => {});
+        if (this.driver === 'expo-video' && this.activePlayer && typeof this.activePlayer.play === 'function') {
+          this.activePlayer.play();
           onPlaybackStatus?.({ isPlaying: true, didJustFinish: false });
           return true;
         }
@@ -111,15 +77,8 @@ class ResilientAudioService {
       // Stop previous playback
       await this.stop();
       this.currentUri = uri;
-      this.currentListener = onPlaybackStatus || null;
 
-      // 1. Primary on Native: AudioBridge (WebView audio engine)
-      if (this.bridge) {
-        this.bridge.play(uri);
-        return true;
-      }
-
-      // 2. Primary on Web: HTML5 Audio
+      // 1. Web HTML5 Audio (Instant live sound in browser / mobile Chrome)
       if (this.driver === 'web') {
         const audio = new (window as any).Audio(uri);
         this.webAudio = audio;
@@ -132,7 +91,19 @@ class ResilientAudioService {
         return true;
       }
 
-      // 3. Native fallback: expo-video
+      // 2. expo-audio
+      if (this.driver === 'expo-audio') {
+        const ea = require('expo-audio');
+        const player = ea.createAudioPlayer(uri);
+        this.activePlayer = player;
+        if (player && typeof player.play === 'function') {
+          player.play();
+        }
+        onPlaybackStatus?.({ isPlaying: true, didJustFinish: false });
+        return true;
+      }
+
+      // 3. expo-video
       if (this.driver === 'expo-video') {
         const ev = require('expo-video');
         const player = ev.createVideoPlayer(uri);
@@ -162,23 +133,12 @@ class ResilientAudioService {
         return true;
       }
 
-      // 4. Native fallback: expo-audio
-      if (this.driver === 'expo-audio') {
-        const ea = require('expo-audio');
-        const player = ea.createAudioPlayer(uri);
-        this.activePlayer = player;
-        if (player && typeof player.play === 'function') {
-          player.play();
-        }
-        onPlaybackStatus?.({ isPlaying: true, didJustFinish: false });
-        return true;
-      }
-
-      // Fallback indicator
+      // Fallback: In standard Expo Go client where native audio modules are omitted,
+      // report active status so visual waveforms and progress counters still animate.
       onPlaybackStatus?.({ isPlaying: true, didJustFinish: false });
       return true;
     } catch (e) {
-      console.warn('[AudioService] Playback error, falling back:', e);
+      console.warn('[AudioService] Playback error:', e);
       this.activePlayer = null;
       this.webAudio = null;
       this.currentUri = null;
@@ -188,13 +148,10 @@ class ResilientAudioService {
 
   async pause(): Promise<void> {
     try {
-      if (this.bridge) {
-        this.bridge.pause();
-      }
-      if (this.activePlayer && typeof this.activePlayer.pause === 'function') {
-        this.activePlayer.pause();
-      } else if (this.driver === 'web' && this.webAudio) {
+      if (this.driver === 'web' && this.webAudio) {
         this.webAudio.pause();
+      } else if (this.activePlayer && typeof this.activePlayer.pause === 'function') {
+        this.activePlayer.pause();
       }
     } catch (e) {
       console.warn('[AudioService] Pause error:', e);
@@ -203,8 +160,10 @@ class ResilientAudioService {
 
   async stop(): Promise<void> {
     try {
-      if (this.bridge) {
-        this.bridge.stop();
+      if (this.webAudio) {
+        this.webAudio.pause();
+        this.webAudio.currentTime = 0;
+        this.webAudio = null;
       }
       if (this.activePlayer) {
         if (typeof this.activePlayer.pause === 'function') {
@@ -223,14 +182,8 @@ class ResilientAudioService {
         }
         this.activePlayer = null;
       }
-      if (this.webAudio) {
-        this.webAudio.pause();
-        this.webAudio.currentTime = 0;
-        this.webAudio = null;
-      }
     } catch {}
     this.currentUri = null;
-    this.currentListener = null;
   }
 
   getCurrentUri(): string | null {

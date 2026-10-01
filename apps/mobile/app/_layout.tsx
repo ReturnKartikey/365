@@ -20,6 +20,7 @@ import {
 } from '@expo-google-fonts/inter';
 import { ThemeProvider, useTheme } from '../src/theme/ThemeContext';
 import { AuthProvider } from '../src/services/AuthContext';
+import { GlobalAudioBridge } from '../src/components/GlobalAudioBridge';
 
 class RootErrorBoundary extends Component<
   { children: React.ReactNode },
@@ -125,6 +126,7 @@ export default function RootLayout() {
           <ThemeProvider>
             <AuthProvider>
               <RootNav />
+              <GlobalAudioBridge />
             </AuthProvider>
           </ThemeProvider>
         </SafeAreaProvider>

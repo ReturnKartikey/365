@@ -7,6 +7,16 @@ import WelcomeScreen from './welcome';
 export default function Index() {
   const { user, isLoading } = useAuth();
 
+  React.useEffect(() => {
+    try {
+      const { NativeModules } = require('react-native');
+      console.log('ALL_EXPO_MODULES:', JSON.stringify(Object.keys((globalThis as any).expo?.modules || {})));
+      console.log('ALL_RN_MODULES:', JSON.stringify(Object.keys(NativeModules || {})));
+    } catch (e) {
+      console.log('PROBE_ERROR:', e);
+    }
+  }, []);
+
   if (isLoading) {
     return (
       <View style={{ flex: 1, backgroundColor: '#121316', justifyContent: 'center', alignItems: 'center' }}>

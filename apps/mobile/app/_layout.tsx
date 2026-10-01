@@ -1,5 +1,6 @@
-import React from 'react';
-import { View, ActivityIndicator } from 'react-native';
+import 'react-native-gesture-handler';
+import React, { Component, ErrorInfo } from 'react';
+import { View, Text, ActivityIndicator, TouchableOpacity } from 'react-native';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -19,6 +20,44 @@ import {
 } from '@expo-google-fonts/inter';
 import { ThemeProvider, useTheme } from '../src/theme/ThemeContext';
 import { AuthProvider } from '../src/services/AuthContext';
+
+class RootErrorBoundary extends Component<
+  { children: React.ReactNode },
+  { hasError: boolean; error: Error | null }
+> {
+  state = { hasError: false, error: null as Error | null };
+
+  static getDerivedStateFromError(error: Error) {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+    console.error('RootErrorBoundary caught error:', error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <View style={{ flex: 1, backgroundColor: '#121316', justifyContent: 'center', alignItems: 'center', padding: 24 }}>
+          <Text style={{ color: '#E8A282', fontSize: 24, fontWeight: '700', marginBottom: 12 }}>365</Text>
+          <Text style={{ color: '#FFFFFF', fontSize: 16, textAlign: 'center', marginBottom: 20 }}>
+            Something went wrong during launch.
+          </Text>
+          <Text style={{ color: '#A09FA0', fontSize: 12, textAlign: 'center', marginBottom: 24 }}>
+            {this.state.error?.message || 'Unknown error'}
+          </Text>
+          <TouchableOpacity
+            style={{ backgroundColor: '#C67D5A', paddingHorizontal: 20, paddingVertical: 12, borderRadius: 20 }}
+            onPress={() => this.setState({ hasError: false, error: null })}
+          >
+            <Text style={{ color: '#FFFFFF', fontWeight: '600' }}>Retry</Text>
+          </TouchableOpacity>
+        </View>
+      );
+    }
+    return this.props.children;
+  }
+}
 
 function RootNav() {
   const { colors, isDark } = useTheme();
@@ -58,7 +97,7 @@ function RootNav() {
 }
 
 export default function RootLayout() {
-  const [fontsLoaded] = useFonts({
+  const [fontsLoaded, fontError] = useFonts({
     Fraunces_400Regular,
     Fraunces_500Medium,
     Fraunces_600SemiBold,
@@ -71,7 +110,7 @@ export default function RootLayout() {
     'NType82-Headline': require('../assets/fonts/NType82-Headline.otf'),
   });
 
-  if (!fontsLoaded) {
+  if (!fontsLoaded && !fontError) {
     return (
       <View style={{ flex: 1, backgroundColor: '#121316', justifyContent: 'center', alignItems: 'center' }}>
         <ActivityIndicator color="#C67D5A" size="large" />
@@ -80,14 +119,16 @@ export default function RootLayout() {
   }
 
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
-      <SafeAreaProvider>
-        <ThemeProvider>
-          <AuthProvider>
-            <RootNav />
-          </AuthProvider>
-        </ThemeProvider>
-      </SafeAreaProvider>
-    </GestureHandlerRootView>
+    <RootErrorBoundary>
+      <GestureHandlerRootView style={{ flex: 1, backgroundColor: '#121316' }}>
+        <SafeAreaProvider>
+          <ThemeProvider>
+            <AuthProvider>
+              <RootNav />
+            </AuthProvider>
+          </ThemeProvider>
+        </SafeAreaProvider>
+      </GestureHandlerRootView>
+    </RootErrorBoundary>
   );
 }

@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useMemo, useEffect } from 'react';
 import { useColorScheme } from 'react-native';
-import { M3ColorScheme, M3Shapes, M3Typography, M3Motion } from './m3Tokens';
+import type { M3ColorScheme } from './m3Tokens';
+import { M3Shapes, M3Typography, M3Motion } from './m3Tokens';
 import { generateM3ColorScheme } from './paletteGenerator';
 
 export type ThemeMode = 'system' | 'dark' | 'light';
@@ -24,7 +25,11 @@ const ThemeContext = createContext<ThemeContextType | null>(null);
 export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const systemScheme = useColorScheme();
   const [mode, setMode] = useState<ThemeMode>('system');
-  const [seedColor, setSeedColor] = useState<string>(DEFAULT_SEED);
+  const [seedColor, setSeedColorState] = useState<string>(DEFAULT_SEED);
+
+  const setSeedColor = React.useCallback((hex: string) => {
+    setSeedColorState((prev) => (prev.toLowerCase() === hex.toLowerCase() ? prev : hex));
+  }, []);
 
   const isDark = useMemo(() => {
     if (mode === 'dark') return true;

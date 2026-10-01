@@ -9,6 +9,7 @@ import {
   Modal,
   TextInput,
   Alert,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -49,10 +50,10 @@ export default function SettingsScreen() {
     router.replace('/welcome');
   };
 
-  const handleSendReport = () => {
+  const handleSendReport = async () => {
     if (!reportReason.trim()) return;
 
-    SongDataService.reportContent({
+    await SongDataService.reportContent({
       reporterId: user?.id || 'anonymous',
       targetType: reportTarget,
       targetId: 'current_daily_song',
@@ -377,16 +378,21 @@ export default function SettingsScreen() {
         </View>
       </ScrollView>
 
-      {/* Content & Safety Policy Modal */}
-      <Modal visible={showPolicy} transparent animationType="fade" onRequestClose={() => setShowPolicy(false)}>
+      {/* Content & Safety Policy Overlay */}
+      {showPolicy && (
         <View style={styles.modalOverlay}>
+          <TouchableOpacity
+            style={StyleSheet.absoluteFillObject}
+            activeOpacity={1}
+            onPress={() => setShowPolicy(false)}
+          />
           <View
             style={[
               styles.modalDialog,
               {
                 backgroundColor: colors.surfaceContainerHigh,
+                borderColor: colors.outlineVariant,
                 borderRadius: shapes.extraLarge,
-                maxWidth: 440,
               },
             ]}
           >
@@ -395,7 +401,7 @@ export default function SettingsScreen() {
                 styles.modalHeading,
                 {
                   color: colors.onSurface,
-                  fontFamily: typography.headlineSmall.fontFamilySerif,
+                  fontFamily: 'Fraunces_700Bold',
                 },
               ]}
             >
@@ -445,18 +451,23 @@ export default function SettingsScreen() {
             </View>
           </View>
         </View>
-      </Modal>
+      )}
 
-      {/* Report Modal */}
-      <Modal visible={showReportModal} transparent animationType="fade" onRequestClose={() => setShowReportModal(false)}>
+      {/* Report Overlay */}
+      {showReportModal && (
         <View style={styles.modalOverlay}>
+          <TouchableOpacity
+            style={StyleSheet.absoluteFillObject}
+            activeOpacity={1}
+            onPress={() => setShowReportModal(false)}
+          />
           <View
             style={[
               styles.modalDialog,
               {
                 backgroundColor: colors.surfaceContainerHigh,
+                borderColor: colors.outlineVariant,
                 borderRadius: shapes.extraLarge,
-                maxWidth: 440,
               },
             ]}
           >
@@ -465,7 +476,7 @@ export default function SettingsScreen() {
                 styles.modalHeading,
                 {
                   color: colors.onSurface,
-                  fontFamily: typography.headlineSmall.fontFamilySerif,
+                  fontFamily: 'Fraunces_700Bold',
                 },
               ]}
             >
@@ -495,7 +506,7 @@ export default function SettingsScreen() {
             </View>
           </View>
         </View>
-      </Modal>
+      )}
 
       {/* Material You 3 Acknowledgment Toast with Animated Tick */}
       <M3Toast
@@ -595,15 +606,32 @@ const styles = StyleSheet.create({
     fontSize: 15,
   },
   modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.6)',
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0, 0, 0, 0.72)',
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 24,
+    zIndex: 9999,
   },
   modalDialog: {
     width: '100%',
+    maxWidth: 420,
     padding: 24,
+    borderWidth: 1,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 10 },
+        shadowOpacity: 0.35,
+        shadowRadius: 20,
+      },
+      android: {
+        elevation: 16,
+      },
+      web: {
+        boxShadow: '0 20px 48px rgba(0, 0, 0, 0.5)',
+      },
+    }),
   },
   modalHeading: {
     fontSize: 22,

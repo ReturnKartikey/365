@@ -70,6 +70,7 @@ export interface Submission {
   status: SubmissionStatus;
   selectedDate?: string; // YYYY-MM-DD when selected
   rejectionReason?: string;
+  note?: string;
 }
 
 export type DailySongStatus = 'scheduled' | 'published';

@@ -1,12 +1,44 @@
 import React from 'react';
+import { Easing } from 'react-native';
 import { Tabs } from 'expo-router';
 import { M3NavigationBar, TabKey } from '../../src/components/M3NavigationBar';
 
+import { useTheme } from '../../src/theme/ThemeContext';
+
 export default function TabsLayout() {
+  const { colors } = useTheme();
+
   return (
     <Tabs
+      detachInactiveScreens={false}
       screenOptions={{
         headerShown: false,
+        lazy: false,
+        freezeOnBlur: false,
+        animation: 'shift',
+        sceneStyle: {
+          backgroundColor: colors.background,
+        },
+        transitionSpec: {
+          animation: 'timing',
+          config: {
+            duration: 120,
+            easing: Easing.out(Easing.quad),
+          },
+        },
+        sceneStyleInterpolator: ({ current }) => ({
+          sceneStyle: {
+            backgroundColor: colors.background,
+            transform: [
+              {
+                translateX: current.progress.interpolate({
+                  inputRange: [-1, 0, 1],
+                  outputRange: [-16, 0, 16],
+                }),
+              },
+            ],
+          },
+        }),
       }}
       tabBar={({ state, navigation }) => {
         const routeName = state.routes[state.index].name;

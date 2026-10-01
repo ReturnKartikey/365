@@ -7,7 +7,8 @@
     "typecheck": "tsc --noEmit",
     "serve": "npm run build && firebase emulators:start --only functions,firestore",
     "shell": "npm run build && firebase functions:shell",
-    "seed": "npm run build && node dist/scripts/seed.js"
+    "seed": "npm run build && node dist/scripts/seed.js",
+    "release": "npm run build && node dist/scripts/triggerRelease.js"
   },
   "dependencies": {
     "@365/core": "*",

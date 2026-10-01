@@ -4,177 +4,243 @@
 
 ---
 
-## 1. System Overview & Architecture
+## Architecture
 
 ```mermaid
 flowchart LR
     subgraph Mobile ["Expo (React Native + M3)"]
-        TodayScreen["Today (DAY N + Reveal)"]
-        SubmitScreen["Submit (Catalog Search + Dedup)"]
-        HistoryScreen["History (365 Archive)"]
-        ShareScreen["Share Card Generator"]
+        TodayScreen["Today — DAY N + Reveal"]
+        SubmitScreen["Submit — Catalog Search"]
+        HistoryScreen["History — 365 Archive"]
         SettingsScreen["Settings & Policies"]
     end
 
-    subgraph Core ["Shared Core (@365/core)"]
+    subgraph Core ["@365/core"]
+        Types["Shared Domain Types"]
         MusicProvider["MusicProvider Interface"]
         SpotifyAdapter["Spotify API Adapter"]
-        SongSelector["SongSelector Interface"]
-        RulesEngine["Deduplication & Rules"]
     end
 
-    subgraph Backend ["Firebase Cloud Functions"]
-        DailyRelease["Scheduled Daily Release (7:00 PM IST)"]
-        PushSender["FCM Push Dispatcher"]
-        SubmitTrig["Transactional Submission Validator"]
-        Firestore["Cloud Firestore"]
+    subgraph Backend ["Supabase (PostgreSQL)"]
+        DB["Tables + RLS Policies"]
+        RPC["RPC Functions"]
+        PgCron["pg_cron — 7 PM IST Release"]
+    end
+
+    subgraph CI ["GitHub Actions"]
+        CronJob["Daily Cron Failsafe"]
+        CLI["triggerRelease.ts"]
     end
 
     subgraph Admin ["Admin Dashboard (Next.js)"]
-        Desk["Curation & Moderation Desk"]
-        CalendarScheduler["Calendar Day Scheduler"]
-        QueueMod["Queue Moderator & Bans"]
+        Desk["Curation & Moderation"]
     end
 
     Mobile --> Core
     Admin --> Core
-    Backend --> Core
     Mobile --> Backend
-    Admin --> Firestore
+    Admin --> Backend
+    CI --> Backend
 ```
 
-### Core Design Philosophy: Material You Done with Taste
-- **Hero Artwork Dominance**: Large artwork with generous corner radius (`M3Shapes.extraLarge`), elevated tonal shadow.
-- **Dynamic Palette Seed**: On mobile, the active `M3ColorScheme` derives its tonal palette directly from the album artwork's dominant color.
-- **Editorial Typography**: Refined serif display pairing (`Fraunces`) for "DAY 47" and song titles with clean sans (`Inter`) for legible body and metadata.
-- **Zero AI Slop**: Strict adherence to editorial restraint. No purple-blue gradients, glowing orbs, glassmorphism panels, card clutter, or emoji icons.
+### Design Philosophy
+- **Hero Artwork Dominance** — Large album art with generous corner radius, elevated tonal shadow.
+- **Dynamic Palette** — `M3ColorScheme` derives its tonal palette from the album artwork's dominant color.
+- **Editorial Typography** — `Fraunces` serif for display headings, `Inter` for body.
+- **Zero AI Slop** — No purple-blue gradients, glowing orbs, glassmorphism, card clutter, or emoji icons.
 
 ---
 
-## 2. Monorepo Structure
+## Monorepo Structure
 
 ```
 365/
 ├── packages/
-│   └── core/               # Shared domain types, MusicProvider, SongSelector, deduplication rules
+│   └── core/                  # Shared domain types, MusicProvider, dedup rules
 ├── apps/
-│   ├── mobile/             # Expo React Native app with Expo Router & Reanimated
-│   ├── admin/              # Next.js 14+ web dashboard for curation, calendar scheduling & moderation
-│   └── backend/            # Firebase Cloud Functions (scheduled daily release, FCM, security rules)
-├── .env.example            # Complete environment variable template
-├── firestore.rules         # Hardened Firestore security rules
-└── package.json            # Monorepo root workspace scripts
+│   ├── mobile/                # Expo React Native app (Expo Router + Reanimated)
+│   │   └── android/           # Native Android build (Gradle, signing)
+│   ├── admin/                 # Next.js web dashboard for curation & moderation
+│   └── backend/               # Release trigger script & package scripts
+│       └── supabase/          # Schema SQL (mirror)
+├── supabase/
+│   └── schema.sql             # Full Supabase schema — tables, RLS, RPC, seed data, pg_cron
+├── .github/
+│   └── workflows/
+│       └── daily-release.yml  # GitHub Actions daily cron failsafe
+├── .env.example               # Environment variable template
+└── package.json               # Monorepo root (npm workspaces)
 ```
 
 ---
 
-## 3. Quick Start & Local Development
+## Zero-Cost Stack
+
+| Layer | Service | Cost |
+|-------|---------|------|
+| **Database** | Supabase Free Tier (PostgreSQL + RLS + RPC) | $0 |
+| **Daily Release** | `pg_cron` inside Supabase + GitHub Actions failsafe | $0 |
+| **Auth** | Supabase Auth (Anonymous + Google) | $0 |
+| **Music Catalog** | Spotify Web API (Client Credentials) | $0 |
+| **CI/CD** | GitHub Actions (2,000 min/mo free) | $0 |
+| **Hosting** | N/A — mobile-only, no web hosting needed | $0 |
+
+**Total: $0/month. No credit card required.**
+
+---
+
+## Quick Start
 
 ### Prerequisites
-- Node.js >= 20.x
-- npm >= 10.x
+- Node.js ≥ 20 · npm ≥ 10
+- A free [Supabase](https://supabase.com) project
 
-### 1. Install Dependencies
+### 1. Install
+
 ```bash
-# In the root repository directory
+git clone https://github.com/ReturnKartikey/365.git
+cd 365
 npm install
 ```
 
-### 2. Configure Environment Variables
-Copy `.env.example` to `.env` in the root:
+### 2. Set Up Supabase
+
+1. Create a project at [supabase.com/dashboard](https://supabase.com/dashboard).
+2. Open the **SQL Editor** and paste the entire contents of [`supabase/schema.sql`](supabase/schema.sql).
+3. Click **Run** — you should see "Success. No rows returned."
+
+This creates all tables, RLS policies, RPC functions, seed data, and the `pg_cron` scheduled job.
+
+### 3. Configure Environment
+
 ```bash
 cp .env.example .env
 ```
 
----
+Fill in your Supabase credentials:
 
-## 4. Service Setup & Keys
-
-### A. Spotify Web API (Catalog Provider)
-1. Go to the [Spotify Developer Dashboard](https://developer.spotify.com/dashboard).
-2. Create an App (e.g. `365 Ritual Discovery`).
-3. Copy the **Client ID** and **Client Secret**.
-4. Set `SPOTIFY_CLIENT_ID` and `SPOTIFY_CLIENT_SECRET` in `.env`.
-> *Note: If credentials are not provided, `@365/core`'s built-in fallback catalog immediately activates with rich offline tracks (Leon Bridges, Nils Frahm, The Weeknd, etc.) allowing seamless development and testing.*
-
-### B. Firebase Project Configuration
-1. Create a project at [Firebase Console](https://console.firebase.google.com/).
-2. Enable **Authentication** with Google provider and Anonymous (for Guest mode).
-3. Enable **Cloud Firestore** and deploy rules:
-   ```bash
-   firebase deploy --only firestore:rules,firestore:indexes
-   ```
-4. Enable **Firebase Cloud Messaging (FCM)** for push notifications.
-
-### C. Seed Database with Initial Data
-Run the included seed script to populate sample users, catalog songs, active submissions, and published daily songs:
-```bash
-npm run seed --workspace=@365/backend
+```env
+SUPABASE_URL=https://<your-project-ref>.supabase.co
+SUPABASE_ANON_KEY=<your-anon-key>
+SUPABASE_SERVICE_ROLE_KEY=<your-service-role-key>
 ```
 
+Also copy to `apps/mobile/.env` for the mobile app.
+
+### 4. (Optional) Spotify API
+
+For live catalog search, add your Spotify credentials to `.env`:
+
+```env
+SPOTIFY_CLIENT_ID=<your-client-id>
+SPOTIFY_CLIENT_SECRET=<your-client-secret>
+```
+
+> Without Spotify credentials, `@365/core`'s built-in fallback catalog activates with curated offline tracks.
+
 ---
 
-## 5. Running the Apps
+## Running the App
 
-### Mobile App (Expo)
+### Mobile (Expo)
+
 ```bash
 npm run start --workspace=@365/mobile
 ```
-- Press `w` to open in browser (Expo Web).
-- Press `a` to run on connected Android device / emulator.
-- Press `i` to run on iOS Simulator.
 
-### Admin Dashboard (Next.js)
+- Press **`a`** → Android device / emulator
+- Press **`w`** → Web browser
+- Press **`i`** → iOS Simulator
+
+### Admin Dashboard
+
 ```bash
 npm run dev --workspace=@365/admin
 ```
-Open [http://localhost:3000](http://localhost:3000) to access:
-- **Overview**: Daily stats, today's song status, manual release trigger.
-- **Calendar & Select**: Schedule future days on the calendar from the community queue or catalog.
-- **Queue**: Search, review, remove, or ban abusive users.
-- **Reports**: Handle listener reports on songs or accounts.
-- **Release Config**: Edit release time (default 19:00 IST) and timezone.
 
-### Cloud Functions & Emulators
+### Build APK
+
 ```bash
-npm run serve --workspace=@365/backend
+cd apps/mobile/android
+./gradlew.bat assembleRelease
+```
+
+Output: `apps/mobile/android/app/build/outputs/apk/release/app-release.apk`
+
+---
+
+## Daily Release System
+
+The core ritual: every day at **7:00 PM IST**, one song is published for the entire community.
+
+### Three-Layer Reliability
+
+1. **`pg_cron` (Primary)** — A PostgreSQL cron job inside Supabase calls `execute_daily_release()` at 13:30 UTC daily. Zero infrastructure needed.
+
+2. **GitHub Actions (Failsafe)** — [`.github/workflows/daily-release.yml`](.github/workflows/daily-release.yml) runs at 13:35 UTC as a backup. Requires `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` as repository secrets.
+
+3. **CLI (Manual)** — For testing or emergency releases:
+   ```bash
+   npm run release --workspace=@365/backend
+   ```
+
+### How It Works
+
+The `execute_daily_release()` RPC function:
+1. Checks if today's song is already published (idempotency guard).
+2. If a song is pre-scheduled for today → publishes it.
+3. If not → picks the oldest submission from the queue.
+4. If the queue is empty → falls back to the `editorial_fallback_pool`.
+5. Updates `daily_songs`, marks the submission as `selected`, and increments the submitter's selection count.
+
+---
+
+## Database Schema
+
+Six tables with Row-Level Security:
+
+| Table | Purpose |
+|-------|---------|
+| `users` | User profiles, submission/selection counts, ban status |
+| `daily_songs` | The 365 archive — one row per day |
+| `submissions` | Community song queue |
+| `config` | App-wide settings (current day number, release time) |
+| `reports` | User-submitted reports on songs/users |
+| `editorial_fallback_pool` | Curated backup songs when the queue is empty |
+
+Three RPC functions:
+- **`submit_song`** — Validates, deduplicates, and inserts a submission. Enforces one active submission per user.
+- **`execute_daily_release`** — The daily release logic with full idempotency.
+- **`report_item`** — Handles user reports with rate limiting.
+
+---
+
+## Core Rules
+
+### Submission
+- **One active submission per user** — enforced at database level.
+- **Song deduplication** — prevents the same song from being queued twice.
+- **Guest gate** — anonymous users can listen but must sign in to submit.
+
+### Release
+- **Idempotent** — calling `execute_daily_release()` multiple times on the same day is safe.
+- **Graceful fallback chain** — pre-scheduled → oldest queue entry → editorial fallback pool.
+- **No dead days** — the system always has a song to publish.
+
+---
+
+## Scripts
+
+```bash
+npm run build          # Build all workspaces
+npm run typecheck      # TypeScript checks across all workspaces
+npm run release --workspace=@365/backend   # Trigger daily release manually
+npm run start --workspace=@365/mobile      # Start Expo dev server
+npm run dev --workspace=@365/admin         # Start admin dashboard
 ```
 
 ---
 
-## 6. Core Rules & Push Notifications
+## License
 
-### Daily Release Ritual
-- Scheduled Cloud Function runs daily at **7:00 PM IST** (`Asia/Kolkata`).
-- Publishes that day's scheduled song.
-- Dispatches push notifications:
-  - **All Opted-in Listeners**: `"🎧 Today's 365 is here."` (Tapping opens today's song).
-  - **Submitter**: `"🎉 Your song is today's 365."` (Tapping opens the daily song page).
-- **Graceful Fallback**: If no song was pre-scheduled, the `SongSelector` automatically selects the oldest queue candidate. If the queue is also empty, it displays the previous day's song and surfaces an admin alert without crashing.
-
-### Submission Deduplication
-- **One active submission per user**: Enforced at rule and database level.
-- **Song duplicate prevention**: `"This song is already in the 365 queue."`
-- **Guest Gate**: `"Sign in with Google to submit a song."` prevents disposable-account abuse.
-- **No estimated selection time**: The success state states `"In the 365 queue"`.
-
----
-
-## 7. Verification & Automated Tests
-
-Run the complete test suite across workspaces:
-```bash
-# Run @365/core unit tests (SpotifyProvider, SongSelector, submission rules)
-npm run test --workspace=@365/core
-
-# Run TypeScript typechecks across workspaces
-npm run typecheck --workspace=@365/core
-npm run typecheck --workspace=@365/mobile
-npm run typecheck --workspace=@365/admin
-npm run typecheck --workspace=@365/backend
-```
-
----
-
-## 8. License
 MIT. Built for the daily ritual of discovery.

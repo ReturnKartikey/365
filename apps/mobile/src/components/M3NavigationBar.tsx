@@ -131,7 +131,7 @@ const M3NavItem: React.FC<NavItemProps> = ({ tabKey, label, icon: IconComponent,
       onPress={handleItemPress}
       onPressIn={handlePressIn}
       onPressOut={handlePressOut}
-      activeOpacity={0.88}
+      activeOpacity={1}
       style={styles.destinationItem}
     >
       <View style={styles.indicatorContainer}>

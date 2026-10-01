@@ -1,0 +1,39 @@
+name: 365 Daily Ritual Release
+
+on:
+  schedule:
+    # 13:30 UTC = 19:00 IST (7:00 PM IST) every single day
+    - cron: '30 13 * * *'
+  workflow_dispatch:
+    # Allows manual one-click release from GitHub Actions tab anytime
+
+jobs:
+  execute-release:
+    name: Execute 7:00 PM IST Daily Release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger Supabase execute_daily_release RPC
+        run: |
+          if [ -z "${{ secrets.EXPO_PUBLIC_SUPABASE_URL }}" ] || [ -z "${{ secrets.EXPO_PUBLIC_SUPABASE_ANON_KEY }}" ]; then
+            echo "Supabase secrets not configured. Please add EXPO_PUBLIC_SUPABASE_URL and EXPO_PUBLIC_SUPABASE_ANON_KEY to Repository Secrets."
+            exit 1
+          fi
+
+          RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "${{ secrets.EXPO_PUBLIC_SUPABASE_URL }}/rest/v1/rpc/execute_daily_release" \
+            -H "apikey: ${{ secrets.EXPO_PUBLIC_SUPABASE_ANON_KEY }}" \
+            -H "Authorization: Bearer ${{ secrets.EXPO_PUBLIC_SUPABASE_ANON_KEY }}" \
+            -H "Content-Type: application/json" \
+            -d '{}')
+
+          HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
+          BODY=$(echo "$RESPONSE" | sed '$d')
+
+          echo "Response HTTP Code: $HTTP_CODE"
+          echo "Response Body: $BODY"
+
+          if [ "$HTTP_CODE" -ge 200 ] && [ "$HTTP_CODE" -lt 300 ]; then
+            echo "Daily release executed successfully!"
+          else
+            echo "Daily release returned an error: $BODY"
+            exit 1
+          fi

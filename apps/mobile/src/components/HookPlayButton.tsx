@@ -7,9 +7,18 @@ import {
   Platform,
   ViewStyle,
 } from 'react-native';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withTiming,
+  withRepeat,
+  cancelAnimation,
+  Easing,
+  runOnJS,
+} from 'react-native-reanimated';
 import { Play, Pause } from 'lucide-react-native';
 import { useTheme } from '../theme/ThemeContext';
-import { Song } from '@365/core';
+import type { Song } from '@365/core';
 
 interface HookPlayButtonProps {
   song: Song;
@@ -25,12 +34,16 @@ export const HookPlayButton: React.FC<HookPlayButtonProps> = ({
   const { colors, shapes, typography, isDark } = useTheme();
 
   const [isPlaying, setIsPlaying] = useState(false);
-  const [progress, setProgress] = useState(0); // 0 to 1
-  const [pulse, setPulse] = useState(0.8);
+  const [remainingSeconds, setRemainingSeconds] = useState(durationSeconds);
 
-  const animationFrameRef = useRef<number | null>(null);
+  // 120 FPS UI-Thread Reanimated Shared Values
+  const progressAnim = useSharedValue(0);
+  const pulseAnim = useSharedValue(0.3);
+
+  const timerIntervalRef = useRef<any>(null);
+  const totalMs = durationSeconds * 1000;
+  const currentProgressRef = useRef<number>(0);
   const startTimeRef = useRef<number>(0);
-  const pausedProgressRef = useRef<number>(0);
   const audioElementRef = useRef<HTMLAudioElement | null>(null);
   const audioContextRef = useRef<any>(null);
   const synthNodesRef = useRef<any[]>([]);
@@ -100,13 +113,17 @@ export const HookPlayButton: React.FC<HookPlayButtonProps> = ({
 
   const stopPlayback = () => {
     setIsPlaying(false);
-    setProgress(0);
-    setPulse(0.8);
-    pausedProgressRef.current = 0;
+    setRemainingSeconds(durationSeconds);
+    currentProgressRef.current = 0;
 
-    if (animationFrameRef.current) {
-      cancelAnimationFrame(animationFrameRef.current);
-      animationFrameRef.current = null;
+    cancelAnimation(progressAnim);
+    cancelAnimation(pulseAnim);
+    progressAnim.value = withTiming(0, { duration: 180 });
+    pulseAnim.value = 0.3;
+
+    if (timerIntervalRef.current) {
+      clearInterval(timerIntervalRef.current);
+      timerIntervalRef.current = null;
     }
 
     if (audioElementRef.current) {
@@ -126,10 +143,13 @@ export const HookPlayButton: React.FC<HookPlayButtonProps> = ({
 
   const pausePlayback = () => {
     setIsPlaying(false);
+    cancelAnimation(progressAnim);
+    cancelAnimation(pulseAnim);
+    currentProgressRef.current = progressAnim.value;
 
-    if (animationFrameRef.current) {
-      cancelAnimationFrame(animationFrameRef.current);
-      animationFrameRef.current = null;
+    if (timerIntervalRef.current) {
+      clearInterval(timerIntervalRef.current);
+      timerIntervalRef.current = null;
     }
 
     if (audioElementRef.current) {
@@ -143,82 +163,93 @@ export const HookPlayButton: React.FC<HookPlayButtonProps> = ({
     }
   };
 
-  const resumePlayback = () => {
-    setIsPlaying(true);
-    const totalMs = durationSeconds * 1000;
-    startTimeRef.current = performance.now() - pausedProgressRef.current * totalMs;
+  const startAnimationLoop = (fromFraction: number) => {
+    const remainingFraction = 1 - fromFraction;
+    const remainingMs = Math.max(0, remainingFraction * totalMs);
 
-    if (audioElementRef.current) {
-      audioElementRef.current.play().catch(() => {});
-    }
-
-    if (audioContextRef.current && audioContextRef.current.state === 'suspended') {
-      audioContextRef.current.resume();
-    }
-
-    const tick = (now: number) => {
-      const elapsed = now - startTimeRef.current;
-      const curProgress = Math.min(1, elapsed / totalMs);
-      pausedProgressRef.current = curProgress;
-      setProgress(curProgress);
-      // Rhythmic smooth pulse wave (like music breathing)
-      setPulse(0.7 + 0.3 * Math.sin(now * 0.007));
-
-      if (curProgress < 1) {
-        animationFrameRef.current = requestAnimationFrame(tick);
-      } else {
-        stopPlayback();
+    // 1. Butter-smooth UI-thread progress animation (linear transition)
+    progressAnim.value = withTiming(
+      1,
+      {
+        duration: remainingMs,
+        easing: Easing.linear,
+      },
+      (finished) => {
+        if (finished) {
+          runOnJS(stopPlayback)();
+        }
       }
-    };
+    );
 
-    animationFrameRef.current = requestAnimationFrame(tick);
+    // 2. Liquid, organic breathing pulse (in/out sinusoidal ease)
+    pulseAnim.value = withRepeat(
+      withTiming(0.85, {
+        duration: 850,
+        easing: Easing.inOut(Easing.sin),
+      }),
+      -1,
+      true
+    );
+
+    // 3. Low-overhead 1Hz countdown interval for display text only
+    if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
+    const startSec = Math.ceil(remainingFraction * durationSeconds);
+    setRemainingSeconds(startSec);
+
+    timerIntervalRef.current = setInterval(() => {
+      setRemainingSeconds((prev) => {
+        if (prev <= 1) {
+          clearInterval(timerIntervalRef.current);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
   };
 
   const handleTogglePlay = () => {
     if (isPlaying) {
       pausePlayback();
     } else {
-      if (pausedProgressRef.current > 0 && pausedProgressRef.current < 1) {
-        resumePlayback();
-      } else {
-        setIsPlaying(true);
-        setProgress(0);
-        pausedProgressRef.current = 0;
-        const totalMs = durationSeconds * 1000;
-        startTimeRef.current = performance.now();
+      setIsPlaying(true);
+      const current = currentProgressRef.current;
 
-        if (song.metadata.previewUrl && typeof window !== 'undefined' && window.Audio) {
+      if (current === 0) {
+        // Start fresh
+        if (song.metadata?.previewUrl && typeof window !== 'undefined' && window.Audio) {
           try {
             const audio = new window.Audio(song.metadata.previewUrl);
             audioElementRef.current = audio;
-            audio.play().catch(() => {
-              startSynthesizedHook();
-            });
+            audio.play().catch(() => startSynthesizedHook());
           } catch {
             startSynthesizedHook();
           }
         } else {
           startSynthesizedHook();
         }
-
-        const tick = (now: number) => {
-          const elapsed = now - startTimeRef.current;
-          const curProgress = Math.min(1, elapsed / totalMs);
-          pausedProgressRef.current = curProgress;
-          setProgress(curProgress);
-          setPulse(0.7 + 0.3 * Math.sin(now * 0.007));
-
-          if (curProgress < 1) {
-            animationFrameRef.current = requestAnimationFrame(tick);
-          } else {
-            stopPlayback();
-          }
-        };
-
-        animationFrameRef.current = requestAnimationFrame(tick);
+        startAnimationLoop(0);
+      } else {
+        // Resume from current progress
+        if (audioElementRef.current) {
+          audioElementRef.current.play().catch(() => {});
+        }
+        if (audioContextRef.current && audioContextRef.current.state === 'suspended') {
+          audioContextRef.current.resume();
+        }
+        startAnimationLoop(current);
       }
     }
   };
+
+  // Reanimated style for the smooth filling progress bar
+  const animatedProgressStyle = useAnimatedStyle(() => ({
+    width: `${Math.min(100, Math.max(0, progressAnim.value * 100))}%`,
+  }));
+
+  // Reanimated style for the gentle pulsing glow wave
+  const animatedPulseStyle = useAnimatedStyle(() => ({
+    opacity: pulseAnim.value,
+  }));
 
   const progressFillColor = isDark
     ? 'rgba(255, 255, 255, 0.16)'
@@ -238,41 +269,39 @@ export const HookPlayButton: React.FC<HookPlayButtonProps> = ({
         style,
       ]}
     >
-      {/* Animated Greyish Progress Fill Bar from Left to Right with Smooth Pulse (flat vertical right edge) */}
-      <View
+      {/* 120 FPS Reanimated Progress Bar */}
+      <Animated.View
         style={[
           styles.progressFill,
-          {
-            width: `${Math.round(progress * 100)}%`,
-            backgroundColor: progressFillColor,
-          },
+          { backgroundColor: progressFillColor },
+          animatedProgressStyle,
         ]}
       >
-        {/* Living pulse wave layer */}
+        {/* Buttery smooth breathing pulse layer */}
         {isPlaying && (
-          <View
+          <Animated.View
             style={[
               StyleSheet.absoluteFillObject,
               {
-                backgroundColor: isDark ? 'rgba(255, 255, 255, 0.12)' : 'rgba(0, 0, 0, 0.08)',
-                opacity: pulse,
+                backgroundColor: isDark ? 'rgba(255, 255, 255, 0.14)' : 'rgba(0, 0, 0, 0.08)',
               },
+              animatedPulseStyle,
             ]}
           />
         )}
         {/* Leading edge subtle glowing beacon */}
-        {isPlaying && progress > 0.01 && (
-          <View
+        {isPlaying && (
+          <Animated.View
             style={[
               styles.leadingPulseBar,
               {
                 backgroundColor: colors.primary,
-                opacity: 0.7 * pulse,
               },
+              animatedPulseStyle,
             ]}
           />
         )}
-      </View>
+      </Animated.View>
 
       {/* Button Content (Icons & Label) */}
       <View style={styles.contentRow}>
@@ -319,7 +348,7 @@ export const HookPlayButton: React.FC<HookPlayButtonProps> = ({
               },
             ]}
           >
-            {Math.ceil((1 - progress) * durationSeconds)}s
+            {remainingSeconds}s
           </Text>
         )}
       </View>

@@ -8,6 +8,7 @@ import {
   TouchableOpacity,
   Modal,
   ActivityIndicator,
+  TextInput,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -17,7 +18,7 @@ import { useAuth } from '../../src/services/AuthContext';
 import { SongDataService } from '../../src/services/SongDataService';
 import { M3SearchBar } from '../../src/components/M3SearchBar';
 import { M3Button } from '../../src/components/M3Button';
-import { Song, Submission } from '@365/core';
+import type { Song, Submission } from '@365/core';
 
 export default function SubmitScreen() {
   const { colors, typography, shapes } = useTheme();
@@ -41,8 +42,9 @@ export default function SubmitScreen() {
 
   useEffect(() => {
     if (user) {
-      const active = SongDataService.getUserSubmission(user.id);
-      setUserActiveSubmission(active);
+      SongDataService.getUserSubmission(user.id).then((active) => {
+        setUserActiveSubmission(active);
+      });
     }
   }, [user, statusMessage]);
 
@@ -199,7 +201,20 @@ export default function SubmitScreen() {
     }
   };
 
-  const handleConfirmSubmission = () => {
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submissionNote, setSubmissionNote] = useState('');
+
+  useEffect(() => {
+    if (user?.id && !user.isGuest) {
+      SongDataService.getUserSubmission(user.id).then((sub) => {
+        if (sub) {
+          setUserActiveSubmission(sub);
+        }
+      });
+    }
+  }, [user?.id, user?.isGuest]);
+
+  const handleConfirmSubmission = async () => {
     if (!selectedSong) return;
 
     // Check Guest requirement
@@ -208,35 +223,51 @@ export default function SubmitScreen() {
       return;
     }
 
-    stopSongHook();
+    try {
+      setIsSubmitting(true);
+      stopSongHook();
 
-    // Submit via SongDataService
-    const result = SongDataService.submitSong(selectedSong, user);
+      // Submit via SongDataService (calls Supabase RPC submit_song when online)
+      const result = await SongDataService.submitSong(
+        selectedSong,
+        user,
+        submissionNote.trim() || undefined
+      );
 
-    if (result.success && result.submission) {
-      setUserActiveSubmission(result.submission);
-      setSelectedSong(null);
-      setSearchQuery('');
-      setSearchResults([]);
-      setStatusMessage({
-        type: 'success',
-        title: 'In the 365 queue',
-        description:
-          'Your submission is now in the 365 listening pool. Songs are selected daily for the entire community.',
-      });
-    } else {
-      const isAlreadySubmitted =
-        result.errorCode === 'ACTIVE_SUBMISSION_EXISTS' ||
-        result.error?.includes('active submission') ||
-        result.error?.includes('365 queue');
+      if (result.success && result.submission) {
+        setUserActiveSubmission(result.submission);
+        setSelectedSong(null);
+        setSubmissionNote('');
+        setSearchQuery('');
+        setSearchResults([]);
+        setStatusMessage({
+          type: 'success',
+          title: 'In the 365 queue',
+          description:
+            'Your submission is now in the 365 listening pool. Songs are selected daily for the entire community.',
+        });
+      } else {
+        const isAlreadySubmitted =
+          result.errorCode === 'ACTIVE_SUBMISSION_EXISTS' ||
+          result.error?.includes('active submission') ||
+          result.error?.includes('365 queue');
 
+        setStatusMessage({
+          type: 'error',
+          title: isAlreadySubmitted ? 'Please Wait' : 'Submission Unavailable',
+          description: isAlreadySubmitted
+            ? 'You already have an active submission in the 365 queue. You can submit a new song tomorrow.'
+            : (result.error || 'Unable to submit this song.'),
+        });
+      }
+    } catch (e: any) {
       setStatusMessage({
         type: 'error',
-        title: isAlreadySubmitted ? 'Please Wait' : 'Submission Unavailable',
-        description: isAlreadySubmitted
-          ? 'You already have an active submission in the 365 queue. You can submit a new song tomorrow.'
-          : (result.error || 'Unable to submit this song.'),
+        title: 'Error',
+        description: e?.message || 'Failed to submit song.',
       });
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -470,38 +501,58 @@ export default function SubmitScreen() {
               },
             ]}
           >
-            <View style={styles.footerTrackMeta}>
-              <Text
+            <View style={styles.confirmContent}>
+              <View style={styles.footerTrackMeta}>
+                <Text
+                  style={[
+                    styles.confirmingTitle,
+                    {
+                      color: colors.onSurface,
+                      fontFamily: typography.titleSmall.fontFamilySans,
+                    },
+                  ]}
+                  numberOfLines={1}
+                >
+                  Submit "{selectedSong.title}"
+                </Text>
+                <Text
+                  style={[
+                    styles.confirmingArtist,
+                    {
+                      color: colors.onSurfaceVariant,
+                      fontFamily: typography.bodySmall.fontFamilySans,
+                    },
+                  ]}
+                  numberOfLines={1}
+                >
+                  by {selectedSong.artist}
+                </Text>
+              </View>
+
+              <TextInput
+                value={submissionNote}
+                onChangeText={setSubmissionNote}
+                placeholder="Why this song? Add a note (optional)..."
+                placeholderTextColor={colors.onSurfaceVariant + '88'}
+                maxLength={140}
                 style={[
-                  styles.confirmingTitle,
+                  styles.noteInput,
                   {
                     color: colors.onSurface,
-                    fontFamily: typography.titleSmall.fontFamilySans,
-                  },
-                ]}
-                numberOfLines={1}
-              >
-                Submit "{selectedSong.title}"
-              </Text>
-              <Text
-                style={[
-                  styles.confirmingArtist,
-                  {
-                    color: colors.onSurfaceVariant,
+                    backgroundColor: colors.surfaceContainer,
+                    borderRadius: shapes.small,
                     fontFamily: typography.bodySmall.fontFamilySans,
                   },
                 ]}
-                numberOfLines={1}
-              >
-                by {selectedSong.artist}
-              </Text>
-            </View>
+              />
 
-            <M3Button
-              label="Confirm Submission"
-              onPress={handleConfirmSubmission}
-              variant="filled"
-            />
+              <M3Button
+                label="Confirm Submission"
+                onPress={handleConfirmSubmission}
+                variant="filled"
+                loading={isSubmitting}
+              />
+            </View>
           </View>
         )}
       </View>
@@ -627,10 +678,14 @@ const styles = StyleSheet.create({
   },
   header: {
     paddingTop: 16,
-    paddingBottom: 8,
+    paddingBottom: 12,
+    minHeight: 58,
+    justifyContent: 'center',
   },
   screenTitle: {
     fontSize: 28,
+    lineHeight: 34,
+    letterSpacing: -0.3,
   },
   screenSubtitle: {
     fontSize: 14,
@@ -726,16 +781,21 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    paddingHorizontal: 24,
+    paddingHorizontal: 20,
     paddingVertical: 14,
     borderTopWidth: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+  },
+  confirmContent: {
+    width: '100%',
+    gap: 10,
+  },
+  noteInput: {
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    fontSize: 13,
   },
   footerTrackMeta: {
-    flex: 1,
-    marginRight: 12,
+    width: '100%',
   },
   confirmingTitle: {
     fontSize: 15,

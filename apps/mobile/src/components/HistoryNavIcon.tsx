@@ -1,7 +1,7 @@
 import React from 'react';
-import { View, Platform, StyleSheet } from 'react-native';
+import { View, StyleSheet } from 'react-native';
 import Animated, { useAnimatedStyle } from 'react-native-reanimated';
-import { History } from 'lucide-react-native';
+import Svg, { Path } from 'react-native-svg';
 
 interface HistoryNavIconProps {
   size?: number;
@@ -18,74 +18,78 @@ export const HistoryNavIcon: React.FC<HistoryNavIconProps> = ({
     transform: [{ rotate: `${rotation.value}deg` }],
   }));
 
-  if (Platform.OS === 'web') {
-    return (
+  return (
+    <View
+      style={[
+        styles.container,
+        {
+          width: size,
+          height: size,
+        },
+      ]}
+    >
+      {/* Animated Arrow Circle: Rotates 360° around the center and returns to starting point */}
+      <Animated.View
+        style={[
+          styles.layer,
+          {
+            width: size,
+            height: size,
+          },
+          animatedArrowStyle,
+        ]}
+      >
+        <Svg
+          width={size}
+          height={size}
+          viewBox="0 0 24 24"
+        >
+          <Path
+            d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"
+            stroke={color}
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            fill="none"
+          />
+          <Path
+            d="M3 3v5h5"
+            stroke={color}
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            fill="none"
+          />
+        </Svg>
+      </Animated.View>
+
+      {/* Static Clock Hands: Stay completely still in the center */}
       <View
         style={[
-          styles.container,
+          styles.layer,
           {
             width: size,
             height: size,
           },
         ]}
       >
-        {/* Animated Arrow Circle: Rotates 360° around the center and returns to starting point */}
-        <Animated.View
-          style={[
-            styles.layer,
-            {
-              width: size,
-              height: size,
-            },
-            animatedArrowStyle,
-          ]}
+        <Svg
+          width={size}
+          height={size}
+          viewBox="0 0 24 24"
         >
-          <svg
-            width={size}
-            height={size}
-            viewBox="0 0 24 24"
-            fill="none"
+          <Path
+            d="M12 7v5l4 2"
             stroke={color}
             strokeWidth="2"
             strokeLinecap="round"
             strokeLinejoin="round"
-            style={{ display: 'block' }}
-          >
-            <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
-            <path d="M3 3v5h5" />
-          </svg>
-        </Animated.View>
-
-        {/* Static Clock Hands: Stay completely still in the center */}
-        <View
-          style={[
-            styles.layer,
-            {
-              width: size,
-              height: size,
-            },
-          ]}
-        >
-          <svg
-            width={size}
-            height={size}
-            viewBox="0 0 24 24"
             fill="none"
-            stroke={color}
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            style={{ display: 'block' }}
-          >
-            <path d="M12 7v5l4 2" />
-          </svg>
-        </View>
+          />
+        </Svg>
       </View>
-    );
-  }
-
-  // Native fallback
-  return <History size={size} color={color} />;
+    </View>
+  );
 };
 
 const styles = StyleSheet.create({

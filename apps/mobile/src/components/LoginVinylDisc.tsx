@@ -1,12 +1,5 @@
-import React, { useEffect } from 'react';
-import { View, StyleSheet, Platform, useWindowDimensions } from 'react-native';
-import Animated, {
-  useSharedValue,
-  useAnimatedStyle,
-  withTiming,
-  withRepeat,
-  Easing,
-} from 'react-native-reanimated';
+import React, { useEffect, useRef } from 'react';
+import { View, Text, StyleSheet, Platform, useWindowDimensions, Animated, Easing } from 'react-native';
 
 interface LoginVinylDiscProps {
   primaryColor: string;
@@ -27,32 +20,66 @@ if (Platform.OS === 'web' && typeof document !== 'undefined') {
   }
 }
 
+/**
+ * Option D: The Vinyl Sleeve / Album Jacket Peek
+ * An elevated tactile music ritual centerpiece for the Login/Welcome screen.
+ * A matte cardstock 12" album jacket with debossed typography and die-cut thumb notch,
+ * from which the spinning vinyl record smoothly emerges into the warm ambient light.
+ */
 export const LoginVinylDisc: React.FC<LoginVinylDiscProps> = ({ primaryColor }) => {
-  const { width: SCREEN_WIDTH } = useWindowDimensions();
+  const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = useWindowDimensions();
 
-  // Responsive diameter matching reference image
-  const discSize = Math.max(340, Math.min(SCREEN_WIDTH * 0.92, 420));
+  // Responsive dimensions: scale gracefully across phones and small tablets
+  const sleeveSize = Math.round(Math.min(SCREEN_WIDTH * 0.58, 240));
+  const discSize = Math.round(sleeveSize * 1.08);
   const discRadius = discSize / 2;
-  const labelSize = discSize * 0.32;
-  const spindleSize = discSize * 0.08;
+  const labelSize = Math.round(discSize * 0.33);
+  const spindleSize = Math.round(discSize * 0.08);
 
-  // Slow, smooth ambient rotation (24s per revolution)
-  const rotation = useSharedValue(0);
+  // Position vinyl disc so center label is fully outside the jacket mouth in the light,
+  // while the left crescent of grooved vinyl remains inside the sleeve pocket.
+  const discLeft = Math.round(sleeveSize - labelSize / 2 + 12);
+  const discTop = Math.round((sleeveSize - discSize) / 2);
+
+  // Die-cut thumb notch dimensions on right edge of sleeve
+  const notchHeight = 52;
+  const notchDepth = 18;
+  const flapHeight = (sleeveSize - notchHeight) / 2;
+
+  // Responsive vertical positioning: bridges the middle empty space between manifesto and buttons
+  // Placed with clean breathing room below the manifesto text and balanced gap above action buttons
+  const middleTop = Math.round(
+    Math.max(310, Math.min(SCREEN_HEIGHT * 0.425, 385))
+  );
+
+  // Align with left margin (24-28dp) so album spine cleanly aligns with editorial text
+  const assemblyLeft = Math.max(20, Math.min(28, Math.round(SCREEN_WIDTH * 0.07)));
+  const totalAssemblyWidth = discLeft + discSize;
+
+  // Slow, silky ambient rotation (24s per revolution) on UI thread via native driver
+  const spinAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    rotation.value = withRepeat(
-      withTiming(360, {
+    const loop = Animated.loop(
+      Animated.timing(spinAnim, {
+        toValue: 1,
         duration: 24000,
         easing: Easing.linear,
-      }),
-      -1,
-      false
+        useNativeDriver: true,
+      })
     );
-  }, []);
+    loop.start();
+    return () => loop.stop();
+  }, [spinAnim]);
 
-  const animatedSpin = useAnimatedStyle(() => ({
-    transform: [{ rotate: `${rotation.value}deg` }],
-  }));
+  const spinInterpolation = spinAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['0deg', '360deg'],
+  });
+
+  const animatedSpin = {
+    transform: [{ rotate: spinInterpolation }],
+  };
 
   const webSpinStyle =
     Platform.OS === 'web'
@@ -61,7 +88,7 @@ export const LoginVinylDisc: React.FC<LoginVinylDiscProps> = ({ primaryColor }) 
         } as any)
       : null;
 
-  // Concentric groove ring radii
+  // 15 concentric micro-grooves
   const grooves = [
     0.96, 0.93, 0.90, 0.86, 0.82, 0.79, 0.75, 0.71, 0.67, 0.63, 0.59, 0.55, 0.51, 0.47, 0.43,
   ];
@@ -69,35 +96,52 @@ export const LoginVinylDisc: React.FC<LoginVinylDiscProps> = ({ primaryColor }) 
   return (
     <View
       style={[
-        styles.outerContainer,
+        styles.assemblyContainer,
         {
-          width: discSize + 60,
-          height: discSize + 60,
-          // Pushed further right so center label stays on the far right and never touches text
-          right: -discSize * 0.44,
-          top: -36,
+          top: middleTop,
+          left: assemblyLeft,
+          width: totalAssemblyWidth,
+          height: sleeveSize,
         },
       ]}
       pointerEvents="none"
     >
-      {/* 1. Ambient Warm Radial Backlight Glow */}
+      {/* 1. Ambient Warm Radial Backlight Halo */}
       <View
         style={[
           styles.ambientGlow,
           {
-            width: discSize * 0.85,
-            height: discSize * 0.85,
-            borderRadius: (discSize * 0.85) / 2,
+            left: sleeveSize * 0.35,
+            top: (sleeveSize - discSize * 0.85) / 2,
+            width: discSize * 0.88,
+            height: discSize * 0.88,
+            borderRadius: (discSize * 0.88) / 2,
             backgroundColor: primaryColor,
           },
         ]}
       />
 
-      {/* 2. The Main Vinyl Record with Grooves and Sheen (Slowly Spinning) */}
+      {/* 2. Album Jacket Back Cover (Behind Vinyl Disc) */}
+      <View
+        style={[
+          styles.sleeveBack,
+          {
+            width: sleeveSize,
+            height: sleeveSize,
+          },
+        ]}
+      >
+        {/* Dark inner sleeve pocket shadow where the record sits */}
+        <View style={styles.pocketShadow} />
+      </View>
+
+      {/* 3. The Spinning Vinyl Record */}
       <Animated.View
         style={[
           styles.discBody,
           {
+            left: discLeft,
+            top: discTop,
             width: discSize,
             height: discSize,
             borderRadius: discRadius,
@@ -106,7 +150,7 @@ export const LoginVinylDisc: React.FC<LoginVinylDiscProps> = ({ primaryColor }) 
           webSpinStyle,
         ]}
       >
-        {/* Vinyl Grooves */}
+        {/* Micro-groove rings */}
         {grooves.map((ratio, idx) => {
           const r = discRadius * ratio;
           return (
@@ -120,7 +164,7 @@ export const LoginVinylDisc: React.FC<LoginVinylDiscProps> = ({ primaryColor }) 
                   borderRadius: r,
                   borderColor:
                     idx % 3 === 0
-                      ? 'rgba(232, 162, 130, 0.09)'
+                      ? 'rgba(232, 162, 130, 0.10)'
                       : idx % 2 === 0
                       ? 'rgba(255, 255, 255, 0.05)'
                       : 'rgba(0, 0, 0, 0.65)',
@@ -130,7 +174,7 @@ export const LoginVinylDisc: React.FC<LoginVinylDiscProps> = ({ primaryColor }) 
           );
         })}
 
-        {/* Realistic Conical Sheen / Anisotropic Light Reflection (Web) */}
+        {/* Conical light sheen on web */}
         {Platform.OS === 'web' && (
           <View
             style={[
@@ -144,7 +188,7 @@ export const LoginVinylDisc: React.FC<LoginVinylDiscProps> = ({ primaryColor }) 
           />
         )}
 
-        {/* Center Label Disc in Material You Primary Tone */}
+        {/* Center Label in Material You Primary Tone */}
         <View
           style={[
             styles.centerLabel,
@@ -156,7 +200,7 @@ export const LoginVinylDisc: React.FC<LoginVinylDiscProps> = ({ primaryColor }) 
             },
           ]}
         >
-          {/* Inner concentric rings on label */}
+          {/* Outer foil ring */}
           <View
             style={[
               styles.labelInnerRing,
@@ -168,6 +212,8 @@ export const LoginVinylDisc: React.FC<LoginVinylDiscProps> = ({ primaryColor }) 
               },
             ]}
           />
+
+          {/* Inner foil ring */}
           <View
             style={[
               styles.labelInnerRing,
@@ -175,7 +221,7 @@ export const LoginVinylDisc: React.FC<LoginVinylDiscProps> = ({ primaryColor }) 
                 width: labelSize * 0.62,
                 height: labelSize * 0.62,
                 borderRadius: (labelSize * 0.62) / 2,
-                borderColor: 'rgba(0, 0, 0, 0.25)',
+                borderColor: 'rgba(0, 0, 0, 0.28)',
               },
             ]}
           />
@@ -193,22 +239,64 @@ export const LoginVinylDisc: React.FC<LoginVinylDiscProps> = ({ primaryColor }) 
           />
         </View>
       </Animated.View>
+
+      {/* 4. Album Jacket Front Cover (Sits in front of the disc's left portion) */}
+      <View
+        style={[
+          styles.sleeveFrontContainer,
+          {
+            width: sleeveSize,
+            height: sleeveSize,
+          },
+        ]}
+      >
+        {/* Left main cardstock panel */}
+        <View
+          style={[
+            styles.sleeveMainPanel,
+            {
+              width: sleeveSize - notchDepth,
+              height: sleeveSize,
+            },
+          ]}
+        >
+          {/* Subtle left spine rule */}
+          <View style={styles.spineRule} />
+
+          {/* Minimalist blind-debossed center medallion */}
+          <View style={styles.centerMedallion}>
+            <View style={styles.medallionInnerRing}>
+              <Text style={styles.medallionNumber}>365</Text>
+            </View>
+          </View>
+        </View>
+
+        {/* Right edge die-cut flaps forming the thumb notch */}
+        <View style={styles.rightEdgeFlapColumn}>
+          {/* Top flap */}
+          <View style={[styles.rightFlapTop, { height: flapHeight, width: notchDepth }]} />
+
+          {/* Arched thumb notch cutout showing spinning vinyl inside */}
+          <View style={[styles.thumbNotchFrame, { height: notchHeight, width: notchDepth }]} />
+
+          {/* Bottom flap */}
+          <View style={[styles.rightFlapBottom, { height: flapHeight, width: notchDepth }]} />
+        </View>
+      </View>
     </View>
   );
 };
 
 const styles = StyleSheet.create({
-  outerContainer: {
+  assemblyContainer: {
     position: 'absolute',
-    alignItems: 'center',
-    justifyContent: 'center',
     zIndex: 1,
+    // Subtle -3deg tilt gives authentic tabletop LP crate feel
+    transform: [{ rotate: '-3deg' }],
   },
   ambientGlow: {
     position: 'absolute',
-    left: '12%',
-    top: '12%',
-    opacity: 0.22,
+    opacity: 0.28,
     ...Platform.select({
       web: {
         filter: 'blur(55px)',
@@ -216,31 +304,64 @@ const styles = StyleSheet.create({
       default: {
         shadowColor: '#C67D5A',
         shadowOffset: { width: 0, height: 0 },
-        shadowOpacity: 0.4,
+        shadowOpacity: 0.45,
         shadowRadius: 40,
       },
     }),
   },
-  discBody: {
-    backgroundColor: '#121010',
-    alignItems: 'center',
-    justifyContent: 'center',
+  sleeveBack: {
+    position: 'absolute',
+    left: 0,
+    top: 0,
+    backgroundColor: '#141316',
+    borderRadius: 12,
     borderWidth: 1.5,
-    borderColor: 'rgba(232, 162, 130, 0.25)',
-    position: 'relative',
+    borderColor: 'rgba(232, 162, 130, 0.14)',
     overflow: 'hidden',
     ...Platform.select({
       ios: {
         shadowColor: '#000',
-        shadowOffset: { width: -10, height: 16 },
+        shadowOffset: { width: -8, height: 16 },
         shadowOpacity: 0.6,
         shadowRadius: 28,
       },
       android: {
-        elevation: 16,
+        elevation: 10,
       },
       web: {
-        boxShadow: '-12px 20px 48px rgba(0, 0, 0, 0.7), 0 0 1px rgba(255, 255, 255, 0.1)',
+        boxShadow: '-10px 18px 44px rgba(0, 0, 0, 0.7)',
+      },
+    }),
+  },
+  pocketShadow: {
+    position: 'absolute',
+    right: 0,
+    top: 0,
+    bottom: 0,
+    width: 24,
+    backgroundColor: '#09080A',
+    opacity: 0.8,
+  },
+  discBody: {
+    position: 'absolute',
+    backgroundColor: '#111012',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1.5,
+    borderColor: 'rgba(232, 162, 130, 0.24)',
+    overflow: 'hidden',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: -4, height: 12 },
+        shadowOpacity: 0.55,
+        shadowRadius: 20,
+      },
+      android: {
+        elevation: 14,
+      },
+      web: {
+        boxShadow: '-8px 14px 36px rgba(0, 0, 0, 0.65)',
       },
     }),
   },
@@ -282,5 +403,87 @@ const styles = StyleSheet.create({
     backgroundColor: '#0D0B0A',
     borderWidth: 1.5,
     borderColor: 'rgba(255, 255, 255, 0.35)',
+  },
+  sleeveFrontContainer: {
+    position: 'absolute',
+    left: 0,
+    top: 0,
+    flexDirection: 'row',
+  },
+  sleeveMainPanel: {
+    backgroundColor: '#19181B',
+    borderTopLeftRadius: 12,
+    borderBottomLeftRadius: 12,
+    borderTopWidth: 1.5,
+    borderBottomWidth: 1.5,
+    borderLeftWidth: 1.5,
+    borderColor: 'rgba(232, 162, 130, 0.18)',
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    justifyContent: 'center',
+    alignItems: 'center',
+    position: 'relative',
+  },
+  spineRule: {
+    position: 'absolute',
+    left: 8,
+    top: 12,
+    bottom: 12,
+    width: 1,
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+  },
+  centerMedallion: {
+    alignSelf: 'center',
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: 76,
+    height: 76,
+    borderRadius: 38,
+    borderWidth: 1.2,
+    borderColor: 'rgba(232, 162, 130, 0.20)',
+    backgroundColor: 'rgba(0, 0, 0, 0.22)',
+  },
+  medallionInnerRing: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    borderWidth: 0.8,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
+  },
+  medallionNumber: {
+    fontFamily: 'Fraunces_700Bold',
+    fontSize: 22,
+    lineHeight: 24,
+    color: 'rgba(232, 162, 130, 0.78)',
+  },
+  rightEdgeFlapColumn: {
+    width: 18,
+    justifyContent: 'space-between',
+  },
+  rightFlapTop: {
+    backgroundColor: '#19181B',
+    borderTopRightRadius: 12,
+    borderTopWidth: 1.5,
+    borderRightWidth: 1.5,
+    borderColor: 'rgba(232, 162, 130, 0.18)',
+  },
+  thumbNotchFrame: {
+    borderTopLeftRadius: 26,
+    borderBottomLeftRadius: 26,
+    borderLeftWidth: 1.5,
+    borderTopWidth: 1.5,
+    borderBottomWidth: 1.5,
+    borderColor: 'rgba(232, 162, 130, 0.22)',
+    // Transparent interior allows the spinning vinyl disc underneath to be visible
+    backgroundColor: 'transparent',
+  },
+  rightFlapBottom: {
+    backgroundColor: '#19181B',
+    borderBottomRightRadius: 12,
+    borderBottomWidth: 1.5,
+    borderRightWidth: 1.5,
+    borderColor: 'rgba(232, 162, 130, 0.18)',
   },
 });

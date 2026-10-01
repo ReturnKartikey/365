@@ -10,3 +10,12 @@ yarn-error.log*
 *.local
 .env
 .env.local
+*.tsbuildinfo
+
+# Android binaries and build artifacts
+*.apk
+*.aab
+.gradle/
+.cxx/
+build/
+local.properties

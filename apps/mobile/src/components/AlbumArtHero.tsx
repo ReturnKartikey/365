@@ -83,8 +83,8 @@ export const AlbumArtHero: React.FC<AlbumArtHeroProps> = ({
   const { colors, shapes } = useTheme();
   const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = useWindowDimensions();
 
-  // Responsive size optimized so title, artist, and buttons fit in view
-  const artworkSize = Math.min(SCREEN_WIDTH - 56, Math.min(SCREEN_HEIGHT * 0.34, 280));
+  // Responsive size optimized for modern tall screens with editorial proportions
+  const artworkSize = Math.min(SCREEN_WIDTH - 48, Math.min(SCREEN_HEIGHT * 0.38, 326));
 
   // Reveal animation shared values
   const opacity = useSharedValue(isNewRelease ? 0 : 1);

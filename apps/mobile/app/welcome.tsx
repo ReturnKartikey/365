@@ -45,23 +45,23 @@ export default function WelcomeScreen() {
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.background }]}>
       <View style={styles.container}>
-        {/* 1. Giant Material You Vinyl CD peeking from right edge */}
+        {/* 1. Material You Vinyl Disc with ambient radial aura */}
         <LoginVinylDisc primaryColor={colors.primary} />
 
         {/* 2. Editorial Header & Manifesto (Left Column) */}
         <View style={styles.contentColumn}>
           {/* Subtle star accent */}
           <View style={styles.sparkleRow}>
-            <Sparkles size={16} color={colors.primary} />
+            <Sparkles size={18} color={colors.primary} />
           </View>
 
-          {/* Large Editorial Brand Title */}
+          {/* Large Editorial Brand Title in exact Fraunces serif matching Today's 30 September */}
           <Text
             style={[
               styles.brandTitle,
               {
                 color: colors.onBackground,
-                fontFamily: typography.displayLarge.fontFamilySerif,
+                fontFamily: 'Fraunces_700Bold',
               },
             ]}
           >
@@ -83,14 +83,14 @@ export default function WelcomeScreen() {
             </Text>
           </View>
 
-          {/* Clean human-crafted manifesto (no em-dash, no AI fluff) */}
+          {/* Clean human-crafted manifesto */}
           <Text
             style={[
               styles.manifestoText,
               {
                 color: colors.onSurfaceVariant,
                 fontFamily: typography.bodyMedium.fontFamilySans,
-                maxWidth: Math.min(280, SCREEN_WIDTH * 0.68),
+                maxWidth: Math.min(310, SCREEN_WIDTH * 0.72),
               },
             ]}
           >
@@ -142,7 +142,7 @@ const styles = StyleSheet.create({
     position: 'relative',
     overflow: 'hidden',
     paddingHorizontal: 28,
-    paddingTop: 36,
+    paddingTop: 32,
     paddingBottom: 28,
     justifyContent: 'space-between',
   },
@@ -151,21 +151,20 @@ const styles = StyleSheet.create({
     paddingTop: 12,
   },
   sparkleRow: {
-    marginBottom: 8,
+    marginBottom: 10,
   },
   brandTitle: {
-    fontSize: 76,
-    lineHeight: 82,
-    letterSpacing: -1.5,
-    fontWeight: '700',
+    fontSize: 86,
+    lineHeight: 90,
+    letterSpacing: -2,
   },
   taglineWrapper: {
-    marginTop: 10,
-    marginBottom: 16,
+    marginTop: 12,
+    marginBottom: 18,
   },
   ntypeTagline: {
-    fontSize: 27,
-    lineHeight: 33,
+    fontSize: 28,
+    lineHeight: 35,
     letterSpacing: -0.2,
     ...Platform.select({
       web: {
@@ -174,14 +173,14 @@ const styles = StyleSheet.create({
     }),
   },
   manifestoText: {
-    fontSize: 14,
-    lineHeight: 22,
-    letterSpacing: 0.2,
+    fontSize: 15,
+    lineHeight: 23,
+    letterSpacing: 0.15,
     opacity: 0.88,
   },
   actionsSection: {
     zIndex: 2,
-    paddingBottom: 12,
+    paddingBottom: 8,
     gap: 12,
   },
   actionButton: {

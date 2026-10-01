@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -16,12 +16,20 @@ import { useTheme } from '../../src/theme/ThemeContext';
 import { SongDataService } from '../../src/services/SongDataService';
 import { M3Button } from '../../src/components/M3Button';
 import { HookPlayButton } from '../../src/components/HookPlayButton';
-import { DailySong } from '@365/core';
+import type { DailySong } from '@365/core';
 
 export default function HistoryScreen() {
   const { colors, typography, shapes } = useTheme();
-  const [historyItems] = useState<DailySong[]>(SongDataService.getHistory());
+  const [historyItems, setHistoryItems] = useState<DailySong[]>(SongDataService.getHistory());
   const [activeDetailSong, setActiveDetailSong] = useState<DailySong | null>(null);
+
+  useEffect(() => {
+    SongDataService.fetchLiveHistory().then((items) => {
+      if (items && items.length > 0) {
+        setHistoryItems(items);
+      }
+    });
+  }, []);
 
   const handleListen = async (song: DailySong) => {
     const url =
@@ -66,10 +74,11 @@ export default function HistoryScreen() {
           contentContainerStyle={styles.listContent}
           showsVerticalScrollIndicator={false}
           renderItem={({ item }) => {
-            const formattedDate = new Intl.DateTimeFormat('en-US', {
-              month: 'short',
-              day: 'numeric',
-            }).format(new Date(item.date));
+            const shortMonths = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+            const parts = (item.date || '').split('-');
+            const formattedDate = parts.length === 3 
+              ? `${shortMonths[parseInt(parts[1], 10) - 1]} ${parseInt(parts[2], 10)}` 
+              : item.date;
 
             return (
               <TouchableOpacity
@@ -144,6 +153,13 @@ export default function HistoryScreen() {
         onRequestClose={() => setActiveDetailSong(null)}
       >
         <View style={styles.sheetOverlay}>
+          {/* Tapping outside the card closes it */}
+          <TouchableOpacity
+            style={StyleSheet.absoluteFillObject}
+            activeOpacity={1}
+            onPress={() => setActiveDetailSong(null)}
+          />
+
           <View
             style={[
               styles.sheetContent,
@@ -180,10 +196,11 @@ export default function HistoryScreen() {
                     },
                   ]}
                 >
-                  {new Intl.DateTimeFormat('en-US', {
-                    month: 'short',
-                    day: 'numeric',
-                  }).format(new Date(activeDetailSong.date))}
+                  {(() => {
+                    const shortMonths = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+                    const parts = (activeDetailSong.date || '').split('-');
+                    return parts.length === 3 ? `${shortMonths[parseInt(parts[1], 10) - 1]} ${parseInt(parts[2], 10)}` : activeDetailSong.date;
+                  })()}
                 </Text>
 
                 <Text
@@ -257,16 +274,14 @@ const styles = StyleSheet.create({
   },
   header: {
     paddingTop: 16,
-    paddingBottom: 16,
-  },
-  superLabel: {
-    fontSize: 12,
-    letterSpacing: 2,
-    fontWeight: '700',
-    marginBottom: 4,
+    paddingBottom: 12,
+    minHeight: 58,
+    justifyContent: 'center',
   },
   screenTitle: {
     fontSize: 28,
+    lineHeight: 34,
+    letterSpacing: -0.3,
   },
   listContent: {
     paddingBottom: 32,

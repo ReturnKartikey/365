@@ -1,4 +1,4 @@
-import { M3ColorScheme } from './m3Tokens';
+import type { M3ColorScheme } from './m3Tokens';
 
 interface HSL {
   h: number;

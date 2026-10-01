@@ -80,152 +80,147 @@ export default function TodayScreen() {
 
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.background }]} edges={['top', 'left', 'right']}>
-      {/* 1. Header: Exactly aligned with Submit and History screens */}
-      <View style={styles.header}>
-        <Text
-          style={[
-            styles.screenTitle,
-            {
-              color: colors.primary,
-              fontFamily: 'Fraunces_700Bold',
-            },
-          ]}
-        >
-          {monthDayDate}
-        </Text>
-
-        <TouchableOpacity
-          onPress={() => router.push('/settings')}
-          hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-          style={[styles.iconButton, { backgroundColor: colors.surfaceContainerHigh }]}
-        >
-          <Settings size={18} color={colors.onSurface} />
-        </TouchableOpacity>
-      </View>
-
-      {/* 2. Scrollable Body with balanced vertical distribution */}
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* Top/Middle Group: Hero Album Art + Song Information */}
-        <View style={styles.topSection}>
-          {/* Submitter Celebration Card */}
-          {isUserSubmitter && (
-            <View
-              style={[
-                styles.celebrationCard,
-                {
-                  backgroundColor: colors.primaryContainer,
-                  borderColor: colors.outlineVariant,
-                },
-              ]}
-            >
-              <View style={styles.celebrationRow}>
-                <View style={{ flex: 1 }}>
-                  <Text
-                    style={[
-                      styles.celebrationTitle,
-                      {
-                        color: colors.onPrimaryContainer,
-                        fontFamily: typography.titleMedium.fontFamilySans,
-                      },
-                    ]}
-                  >
-                    🎉 Your song is today's 365!
-                  </Text>
-                  <Text
-                    style={[
-                      styles.celebrationSubtitle,
-                      {
-                        color: colors.onPrimaryContainer,
-                        fontFamily: typography.bodySmall.fontFamilySans,
-                      },
-                    ]}
-                  >
-                    Selected from community submissions for Day {todayData.dayNumber}.
-                  </Text>
-                </View>
-                <M3Button
-                  label="Share Card"
-                  onPress={() => router.push(`/share/${todayData.dayNumber}`)}
-                  variant="filled"
-                  icon={<Share2 size={16} color={colors.onPrimary} />}
-                />
+        {/* Submitter Celebration Card if today's song was submitted by current user */}
+        {isUserSubmitter && (
+          <View
+            style={[
+              styles.celebrationCard,
+              {
+                backgroundColor: colors.primaryContainer,
+                borderColor: colors.outlineVariant,
+              },
+            ]}
+          >
+            <View style={styles.celebrationRow}>
+              <View style={{ flex: 1 }}>
+                <Text
+                  style={[
+                    styles.celebrationTitle,
+                    {
+                      color: colors.onPrimaryContainer,
+                      fontFamily: typography.titleMedium.fontFamilySans,
+                    },
+                  ]}
+                >
+                  🎉 Your song is today's 365!
+                </Text>
+                <Text
+                  style={[
+                    styles.celebrationSubtitle,
+                    {
+                      color: colors.onPrimaryContainer,
+                      fontFamily: typography.bodySmall.fontFamilySans,
+                    },
+                  ]}
+                >
+                  Selected from community submissions for Day {todayData.dayNumber}.
+                </Text>
               </View>
+              <M3Button
+                label="Share Card"
+                onPress={() => router.push(`/share/${todayData.dayNumber}`)}
+                variant="filled"
+                icon={<Share2 size={16} color={colors.onPrimary} />}
+              />
             </View>
-          )}
-
-          {/* Hero Album Artwork with Reveal Animation and Double-Tap Like */}
-          <View style={styles.albumArtContainer}>
-            <AlbumArtHero
-              artworkUrl={todayData.song.artworkUrl}
-              isNewRelease={isNewRelease}
-              onLike={() => setIsLiked(true)}
-            />
           </View>
+        )}
 
-          {/* Song & Artist Information */}
-          <View style={styles.songInfoSection}>
+        {/* Editorial Date Display with Settings Icon */}
+        <View style={styles.metaSection}>
+          <Text
+            style={[
+              styles.dayNumberDisplay,
+              {
+                color: colors.primary,
+                fontFamily: typography.displayMedium.fontFamilySerif,
+              },
+            ]}
+          >
+            {monthDayDate}
+          </Text>
+
+          <TouchableOpacity
+            onPress={() => router.push('/settings')}
+            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+            style={[styles.iconButton, { backgroundColor: colors.surfaceContainerHigh }]}
+          >
+            <Settings size={18} color={colors.onSurface} />
+          </TouchableOpacity>
+        </View>
+
+        {/* Hero Album Artwork with Reveal Animation and Double-Tap Like */}
+        <AlbumArtHero
+          artworkUrl={todayData.song.artworkUrl}
+          isNewRelease={isNewRelease}
+          onLike={() => setIsLiked(true)}
+        />
+
+        {/* Song & Artist Information */}
+        <View style={styles.songInfoSection}>
+          <Text
+            style={[
+              styles.songTitle,
+              {
+                color: colors.onBackground,
+                fontFamily: typography.headlineLarge.fontFamilySerif,
+              },
+            ]}
+            numberOfLines={2}
+          >
+            {todayData.song.title}
+          </Text>
+
+          <Text
+            style={[
+              styles.songArtist,
+              {
+                color: colors.onSurfaceVariant,
+                fontFamily: typography.titleLarge.fontFamilySans,
+              },
+            ]}
+            numberOfLines={1}
+          >
+            {todayData.song.artist}
+          </Text>
+
+          {/* Submitter Attribution */}
+          <View style={styles.attributionRow}>
             <Text
               style={[
-                styles.songTitle,
-                {
-                  color: colors.onBackground,
-                  fontFamily: 'Fraunces_700Bold',
-                },
-              ]}
-              numberOfLines={2}
-            >
-              {todayData.song.title}
-            </Text>
-
-            <Text
-              style={[
-                styles.songArtist,
+                styles.attributionText,
                 {
                   color: colors.onSurfaceVariant,
-                  fontFamily: typography.titleLarge.fontFamilySans,
+                  fontFamily: typography.bodyMedium.fontFamilySans,
                 },
               ]}
-              numberOfLines={1}
             >
-              {todayData.song.artist}
-            </Text>
-
-            {/* Submitter Attribution */}
-            <View style={styles.attributionRow}>
+              Submitted by{' '}
               <Text
-                style={[
-                  styles.attributionText,
-                  {
-                    color: colors.onSurfaceVariant,
-                    fontFamily: typography.bodyMedium.fontFamilySans,
-                  },
-                ]}
+                style={{
+                  color: colors.onSurface,
+                  fontFamily: typography.titleSmall.fontFamilySans,
+                  fontWeight: '600',
+                }}
               >
-                Submitted by{' '}
-                <Text
-                  style={{
-                    color: colors.onSurface,
-                    fontFamily: typography.titleSmall.fontFamilySans,
-                    fontWeight: '600',
-                  }}
-                >
-                  @{todayData.submitterUsername}
-                </Text>
+                @{todayData.submitterUsername}
               </Text>
-              {isLiked && (
-                <View style={styles.likedBadge}>
-                  <Heart size={14} color="#FF3B30" fill="#FF3B30" />
-                </View>
-              )}
-            </View>
+            </Text>
+            {isLiked && (
+              <View style={styles.likedBadge}>
+                <Heart size={14} color="#FF3B30" fill="#FF3B30" />
+              </View>
+            )}
           </View>
         </View>
 
-        {/* Bottom Group: Action Controls anchored comfortably near the thumb-zone */}
+        {/* Action Controls */}
         <View style={styles.actionControlsSection}>
+          {/* Instagram-style Hook Play Button */}
           <HookPlayButton
             song={todayData.song}
             durationSeconds={15}
@@ -256,20 +251,6 @@ const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
   },
-  header: {
-    paddingHorizontal: 24,
-    paddingTop: 16,
-    paddingBottom: 12,
-    minHeight: 58,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  screenTitle: {
-    fontSize: 28,
-    lineHeight: 34,
-    letterSpacing: -0.3,
-  },
   iconButton: {
     width: 38,
     height: 38,
@@ -278,25 +259,16 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   scrollContent: {
-    flexGrow: 1,
     paddingHorizontal: 24,
+    paddingBottom: 28,
     paddingTop: 4,
-    paddingBottom: 24,
-    justifyContent: 'space-between',
-  },
-  topSection: {
-    width: '100%',
-  },
-  albumArtContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginVertical: 10,
   },
   celebrationCard: {
     padding: 14,
     borderRadius: 14,
     borderWidth: 1,
     marginBottom: 12,
+    marginTop: 4,
   },
   celebrationRow: {
     flexDirection: 'row',
@@ -313,14 +285,29 @@ const styles = StyleSheet.create({
     fontSize: 12,
     opacity: 0.85,
   },
+  metaSection: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 4,
+    marginBottom: 2,
+  },
+  dayNumberDisplay: {
+    fontSize: 34,
+    lineHeight: 40,
+    letterSpacing: -0.5,
+  },
+  dateDisplay: {
+    fontSize: 13,
+    letterSpacing: 0.2,
+    marginTop: 1,
+  },
   songInfoSection: {
-    marginTop: 8,
-    marginBottom: 6,
+    marginVertical: 10,
   },
   songTitle: {
     fontSize: 26,
     lineHeight: 32,
-    letterSpacing: -0.2,
     marginBottom: 4,
   },
   songArtist: {
@@ -343,8 +330,7 @@ const styles = StyleSheet.create({
     letterSpacing: 0.2,
   },
   actionControlsSection: {
-    paddingTop: 16,
-    paddingBottom: 4,
+    marginTop: 14,
     gap: 10,
   },
   hookPlayButton: {

@@ -12,7 +12,11 @@ import {
 import { supabase, isSupabaseConfigured } from './supabase';
 import { AppStorage } from './storage';
 
-const spotifyProvider = new SpotifyProvider({ enableFallback: true });
+const spotifyProvider = new SpotifyProvider({
+  clientId: process.env.EXPO_PUBLIC_SPOTIFY_CLIENT_ID || process.env.SPOTIFY_CLIENT_ID,
+  clientSecret: process.env.EXPO_PUBLIC_SPOTIFY_CLIENT_SECRET || process.env.SPOTIFY_CLIENT_SECRET,
+  enableFallback: true,
+});
 
 const CACHE_KEY_TODAY = '365_cache_today_song';
 const CACHE_KEY_HISTORY = '365_cache_history_songs';

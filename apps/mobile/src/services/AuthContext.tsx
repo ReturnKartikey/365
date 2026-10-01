@@ -1,13 +1,16 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import type { UserProfile } from '@365/core';
 import { supabase, isSupabaseConfigured } from './supabase';
+import { createClient } from '@supabase/supabase-js';
 import { AppStorage } from './storage';
-import { Platform } from 'react-native';
+import { Platform, Linking } from 'react-native';
+import queryString from 'query-string';
 
 interface AuthContextType {
   user: UserProfile | null;
   isLoading: boolean;
   signInWithGoogle: () => Promise<UserProfile>;
+  signInWithVerifiedEmail: (email: string) => Promise<UserProfile>;
   signInAsGuest: () => Promise<UserProfile>;
   signOut: () => Promise<void>;
   updateNotificationPrefs: (prefs: Partial<UserProfile['notificationPrefs']>) => Promise<void>;
@@ -83,7 +86,44 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     loadSession();
 
-    // 3. Supabase Auth listener
+    // 3. Deep link listener for OAuth redirect (e.g. from Google login)
+    const handleDeepLink = async (event: { url: string }) => {
+      try {
+        const url = event.url;
+        if (!url || (!url.includes('access_token') && !url.includes('code='))) return;
+
+        const hash = url.split('#')[1] || '';
+        const hashParams = queryString.parse(hash);
+        const parsedUrl = queryString.parseUrl(url);
+        const code = parsedUrl.query.code as string | undefined;
+
+        if (hashParams.access_token && hashParams.refresh_token) {
+          const { data: sessionData } = await supabase.auth.setSession({
+            access_token: hashParams.access_token as string,
+            refresh_token: hashParams.refresh_token as string,
+          });
+          if (sessionData?.user) {
+            const profile = await fetchSupabaseProfile(sessionData.user.id, sessionData.user.email);
+            if (profile) saveUser(profile);
+          }
+        } else if (code) {
+          const { data: sessionData } = await supabase.auth.exchangeCodeForSession(code);
+          if (sessionData?.user) {
+            const profile = await fetchSupabaseProfile(sessionData.user.id, sessionData.user.email);
+            if (profile) saveUser(profile);
+          }
+        }
+      } catch (err) {
+        console.warn('[AuthContext] Deep link auth handle error:', err);
+      }
+    };
+
+    const linkSub = Linking.addEventListener('url', handleDeepLink);
+    Linking.getInitialURL().then((url) => {
+      if (url) handleDeepLink({ url });
+    });
+
+    // 4. Supabase Auth listener
     if (isSupabaseConfigured) {
       const { data: authListener } = supabase.auth.onAuthStateChange(async (event: any, session: any) => {
         if (session?.user) {
@@ -97,9 +137,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       });
 
       return () => {
+        linkSub.remove();
         authListener?.subscription.unsubscribe();
       };
     }
+
+    return () => {
+      linkSub.remove();
+    };
   }, []);
 
   const saveUser = async (newUser: UserProfile | null) => {
@@ -117,32 +162,39 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const signInWithGoogle = async (): Promise<UserProfile> => {
     if (isSupabaseConfigured) {
-      try {
-        // If web or OAuth redirect
-        if (Platform.OS === 'web') {
-          await supabase.auth.signInWithOAuth({
-            provider: 'google',
-            options: {
-              redirectTo: window.location.origin,
-            },
-          });
-        } else {
-          // Native Google sign-in triggers OAuth or profile creation
-          const { data: { user: authUser } } = await supabase.auth.getUser();
-          if (authUser) {
-            const profile = await fetchSupabaseProfile(authUser.id, authUser.email);
-            if (profile) {
-              saveUser(profile);
-              return profile;
-            }
-          }
+      if (Platform.OS === 'web') {
+        const { error } = await supabase.auth.signInWithOAuth({
+          provider: 'google',
+          options: {
+            redirectTo: typeof window !== 'undefined' ? window.location.origin : undefined,
+          },
+        });
+        if (error) throw error;
+        return new Promise(() => {});
+      } else {
+        // Native mobile OAuth using Web-Bridge callback to avoid Android Chrome 302 custom scheme block
+        const redirectUrl = 'http://192.168.1.36:8081/auth-callback';
+        const { data, error } = await supabase.auth.signInWithOAuth({
+          provider: 'google',
+          options: {
+            redirectTo: redirectUrl,
+            skipBrowserRedirect: true,
+          },
+        });
+
+        if (error) {
+          console.warn('[AuthContext] Supabase OAuth initiation error:', error);
+          throw error;
         }
-      } catch (e) {
-        console.warn('[AuthContext] Supabase Google sign in error:', e);
+
+        if (data?.url) {
+          await Linking.openURL(data.url);
+          return {} as UserProfile;
+        }
       }
     }
 
-    // Default / Offline Fallback User
+    // Default / Offline Fallback User (only reached if Supabase is completely unconfigured)
     const googleUser: UserProfile = {
       id: user?.id && !user.isGuest ? user.id : `usr_g_${Date.now()}`,
       authProvider: 'google',
@@ -163,6 +215,40 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     await saveUser(googleUser);
     return googleUser;
+  };
+
+  const signInWithVerifiedEmail = async (email: string): Promise<UserProfile> => {
+    if (isSupabaseConfigured) {
+      const serviceKey =
+        process.env.EXPO_PUBLIC_SUPABASE_SERVICE_ROLE_KEY ||
+        process.env.SUPABASE_SERVICE_ROLE_KEY;
+      if (serviceKey) {
+        const adminClient = createClient(
+          process.env.EXPO_PUBLIC_SUPABASE_URL || 'https://yhecwvbxhrpnzxxzsgbm.supabase.co',
+          serviceKey
+        );
+        const { data: linkData, error: linkErr } = await adminClient.auth.admin.generateLink({
+          type: 'magiclink',
+          email,
+        });
+
+        if (!linkErr && linkData?.properties?.hashed_token) {
+          const { data: sessionData, error: sessionErr } = await supabase.auth.verifyOtp({
+            token_hash: linkData.properties.hashed_token,
+            type: 'magiclink',
+          });
+
+          if (!sessionErr && sessionData?.user) {
+            const profile = await fetchSupabaseProfile(sessionData.user.id, sessionData.user.email);
+            if (profile) {
+              await saveUser(profile);
+              return profile;
+            }
+          }
+        }
+      }
+    }
+    throw new Error('Failed to sign in with verified email');
   };
 
   const signInAsGuest = async (): Promise<UserProfile> => {
@@ -206,7 +292,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       try {
         await supabase.auth.signOut();
       } catch (e) {
-        console.warn('[AuthContext] Supabase sign out error:', e);
+        console.warn('Supabase sign out error:', e);
       }
     }
     await saveUser(null);
@@ -214,7 +300,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const updateNotificationPrefs = async (prefs: Partial<UserProfile['notificationPrefs']>) => {
     if (!user) return;
-    const updated: UserProfile = {
+    const updated = {
       ...user,
       notificationPrefs: {
         ...user.notificationPrefs,
@@ -222,22 +308,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       },
       updatedAt: new Date().toISOString(),
     };
+    await saveUser(updated);
 
-    if (isSupabaseConfigured) {
+    if (isSupabaseConfigured && !user.isGuest) {
       try {
         await supabase
           .from('users')
           .update({
             notification_prefs: updated.notificationPrefs,
-            updated_at: new Date().toISOString(),
+            updated_at: updated.updatedAt,
           })
           .eq('id', user.id);
       } catch (e) {
-        console.warn('[AuthContext] Failed to update prefs in Supabase:', e);
+        console.warn('Failed to sync notification prefs to Supabase:', e);
       }
     }
-
-    await saveUser(updated);
   };
 
   return (
@@ -246,6 +331,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         user,
         isLoading,
         signInWithGoogle,
+        signInWithVerifiedEmail,
         signInAsGuest,
         signOut,
         updateNotificationPrefs,
@@ -256,10 +342,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   );
 };
 
-export function useAuth(): AuthContextType {
-  const ctx = useContext(AuthContext);
-  if (!ctx) {
-    throw new Error('useAuth must be used within AuthProvider');
+export const useAuth = (): AuthContextType => {
+  const context = useContext(AuthContext);
+  if (!context) {
+    throw new Error('useAuth must be used within an AuthProvider');
   }
-  return ctx;
-}
+  return context;
+};

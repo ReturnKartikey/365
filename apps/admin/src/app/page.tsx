@@ -1,21 +1,64 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { AdminDataService } from '../lib/adminData';
-import { ExternalLink, Calendar, Disc, Users, Music2, Flag, ArrowRight, CheckCircle2 } from 'lucide-react';
+import { AdminDataService, AdminStats } from '../lib/adminData';
+import { DailySong } from '@365/core';
+import { ExternalLink, Calendar, Disc, Users, Music2, Flag, ArrowRight, CheckCircle2, Loader2, AlertCircle } from 'lucide-react';
 
 export default function AdminOverviewPage() {
-  const [stats] = useState(AdminDataService.getStats());
-  const [todaySong] = useState(AdminDataService.getTodaySong());
-  const [historySongs] = useState(AdminDataService.getDailySongs().slice(1));
-  const [releaseTriggered, setReleaseTriggered] = useState(false);
+  const [stats, setStats] = useState<AdminStats>(AdminDataService.getStats());
+  const [todaySong, setTodaySong] = useState<DailySong | undefined>(AdminDataService.getTodaySong());
+  const [historySongs, setHistorySongs] = useState<DailySong[]>(AdminDataService.getDailySongs().slice(1));
+  const [isReleasing, setIsReleasing] = useState(false);
+  const [releaseStatus, setReleaseStatus] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
-  const handleManualRelease = () => {
-    setReleaseTriggered(true);
-    setTimeout(() => {
-      alert("Manual release triggered! Push notifications dispatched to active subscribers: '🎧 Today\'s 365 is here.' and submitter: '🎉 Your song is today\'s 365.'");
-    }, 200);
+  const loadData = async () => {
+    try {
+      const [liveStats, liveDaily, liveToday] = await Promise.all([
+        AdminDataService.fetchStats(),
+        AdminDataService.fetchDailySongs(),
+        AdminDataService.fetchTodaySong(),
+      ]);
+      setStats(liveStats);
+      setTodaySong(liveToday);
+      setHistorySongs(liveDaily.slice(1));
+    } catch (e) {
+      console.warn('Failed to refresh admin data:', e);
+    }
+  };
+
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const handleManualRelease = async () => {
+    if (isReleasing) return;
+    setIsReleasing(true);
+    setReleaseStatus(null);
+
+    try {
+      const res = await AdminDataService.triggerManualRelease();
+      if (res.success) {
+        setReleaseStatus({
+          type: 'success',
+          message: res.message || 'Daily release executed successfully on Supabase.',
+        });
+        await loadData();
+      } else {
+        setReleaseStatus({
+          type: 'error',
+          message: res.message || 'Failed to trigger daily release.',
+        });
+      }
+    } catch (e: any) {
+      setReleaseStatus({
+        type: 'error',
+        message: e?.message || 'Error executing daily release RPC.',
+      });
+    } finally {
+      setIsReleasing(false);
+    }
   };
 
   return (
@@ -139,22 +182,39 @@ export default function AdminOverviewPage() {
 
             <button
               onClick={handleManualRelease}
-              disabled={releaseTriggered}
+              disabled={isReleasing}
               className={`inline-flex items-center justify-center px-5 py-3 rounded-full text-sm font-semibold transition ${
-                releaseTriggered
-                  ? 'bg-emerald-600/30 text-emerald-300 border border-emerald-500/40 cursor-default'
+                isReleasing
+                  ? 'bg-primary/50 text-white cursor-wait'
                   : 'bg-primary hover:bg-primary-hover text-white'
               }`}
             >
-              {releaseTriggered ? (
+              {isReleasing ? (
                 <>
-                  <CheckCircle2 className="w-4 h-4 mr-2 text-emerald-400" />
-                  Release Push Dispatched
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Executing Daily Release...
                 </>
               ) : (
                 'Trigger Daily Release Now'
               )}
             </button>
+
+            {releaseStatus && (
+              <div
+                className={`p-3 rounded-xl text-xs flex items-center space-x-2 border ${
+                  releaseStatus.type === 'success'
+                    ? 'bg-emerald-950/40 text-emerald-200 border-emerald-500/30'
+                    : 'bg-rose-950/40 text-rose-200 border-rose-500/30'
+                }`}
+              >
+                {releaseStatus.type === 'success' ? (
+                  <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                ) : (
+                  <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
+                )}
+                <span>{releaseStatus.message}</span>
+              </div>
+            )}
           </div>
         </div>
       </div>

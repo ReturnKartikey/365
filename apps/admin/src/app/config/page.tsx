@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { AdminDataService } from '../../lib/adminData';
 import { AppConfig } from '@365/core';
 import { Clock, Globe, Save, Check, BellRing } from 'lucide-react';
@@ -11,9 +11,17 @@ export default function ConfigPage() {
   const [timezone, setTimezone] = useState(config.timezone || 'Asia/Kolkata');
   const [savedNotice, setSavedNotice] = useState(false);
 
-  const handleSave = (e: React.FormEvent) => {
+  useEffect(() => {
+    AdminDataService.fetchConfig().then((c) => {
+      setConfig(c);
+      if (c.releaseTime) setReleaseTime(c.releaseTime);
+      if (c.timezone) setTimezone(c.timezone);
+    });
+  }, []);
+
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    AdminDataService.updateConfig({
+    await AdminDataService.updateConfig({
       releaseTime,
       timezone,
     });
@@ -35,7 +43,7 @@ export default function ConfigPage() {
       {savedNotice && (
         <div className="bg-emerald-950/50 border border-emerald-500/40 text-emerald-200 px-4 py-3 rounded-xl text-sm flex items-center">
           <Check className="w-4 h-4 mr-2 text-emerald-400" />
-          Ritual release configuration successfully saved to Firestore.
+          Ritual release configuration successfully saved to Supabase.
         </div>
       )}
 

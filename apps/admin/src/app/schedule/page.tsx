@@ -1,18 +1,38 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { AdminDataService } from '../../lib/adminData';
 import { DailySong, Song, Submission } from '@365/core';
-import { Calendar as CalendarIcon, Check, Search, PlusCircle, Sparkles } from 'lucide-react';
+import { Calendar as CalendarIcon, Check, Search, PlusCircle, Sparkles, Loader2 } from 'lucide-react';
 
 export default function SchedulePage() {
   const [dailySongs, setDailySongs] = useState<DailySong[]>(AdminDataService.getDailySongs());
-  const [submissions] = useState<Submission[]>(AdminDataService.getSubmissions());
-  const [selectedDate, setSelectedDate] = useState('2026-10-01'); // Tomorrow
+  const [submissions, setSubmissions] = useState<Submission[]>(AdminDataService.getSubmissions());
+  const [selectedDate, setSelectedDate] = useState(() => {
+    const tomorrow = new Date(Date.now() + 86400000);
+    return tomorrow.toISOString().split('T')[0];
+  });
   const [searchCatalogQuery, setSearchCatalogQuery] = useState('');
   const [catalogResults, setCatalogResults] = useState<Song[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [notification, setNotification] = useState<string | null>(null);
+
+  const loadData = async () => {
+    try {
+      const [liveDaily, liveSubs] = await Promise.all([
+        AdminDataService.fetchDailySongs(),
+        AdminDataService.fetchSubmissions(),
+      ]);
+      setDailySongs(liveDaily);
+      setSubmissions(liveSubs);
+    } catch (e) {
+      console.warn('Error loading schedule data:', e);
+    }
+  };
+
+  useEffect(() => {
+    loadData();
+  }, []);
 
   const handleSearchCatalog = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -27,22 +47,24 @@ export default function SchedulePage() {
     }
   };
 
-  const handleScheduleFromQueue = (sub: Submission) => {
-    const scheduled = AdminDataService.scheduleSongForDate(selectedDate, sub.song, {
+  const handleScheduleFromQueue = async (sub: Submission) => {
+    await AdminDataService.scheduleSongForDate(selectedDate, sub.song, {
       id: sub.userId,
       username: sub.submitterUsername,
+      displayName: sub.submitterDisplayName,
     });
-    setDailySongs(AdminDataService.getDailySongs());
+    await loadData();
     setNotification(`Scheduled "${sub.song.title}" for ${selectedDate}`);
     setTimeout(() => setNotification(null), 4000);
   };
 
-  const handleScheduleFromCatalog = (song: Song) => {
-    const scheduled = AdminDataService.scheduleSongForDate(selectedDate, song, {
+  const handleScheduleFromCatalog = async (song: Song) => {
+    await AdminDataService.scheduleSongForDate(selectedDate, song, {
       id: 'admin_curator',
       username: 'editorial_desk',
+      displayName: '365 Editorial',
     });
-    setDailySongs(AdminDataService.getDailySongs());
+    await loadData();
     setNotification(`Scheduled "${song.title}" for ${selectedDate}`);
     setTimeout(() => setNotification(null), 4000);
   };

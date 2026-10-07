@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { AdminDataService } from '../../lib/adminData';
 import { Report } from '@365/core';
 import { ShieldCheck, Flag, CheckCircle, XCircle, AlertTriangle } from 'lucide-react';
@@ -8,16 +8,29 @@ import { ShieldCheck, Flag, CheckCircle, XCircle, AlertTriangle } from 'lucide-r
 export default function ReportsPage() {
   const [reports, setReports] = useState<Report[]>(AdminDataService.getReports());
 
-  const handleResolve = (id: string, action: 'dismissed' | 'resolved') => {
-    AdminDataService.resolveReport(id, action, `Actioned by moderator as ${action}`);
-    setReports(AdminDataService.getReports());
+  const loadReports = async () => {
+    try {
+      const data = await AdminDataService.fetchReports();
+      setReports(data);
+    } catch (e) {
+      console.warn('Error fetching reports:', e);
+    }
   };
 
-  const handleBanReportedUser = (userId: string, reportId: string) => {
+  useEffect(() => {
+    loadReports();
+  }, []);
+
+  const handleResolve = async (id: string, action: 'dismissed' | 'resolved') => {
+    await AdminDataService.resolveReport(id, action, `Actioned by moderator as ${action}`);
+    await loadReports();
+  };
+
+  const handleBanReportedUser = async (userId: string, reportId: string) => {
     if (confirm(`Ban user ${userId}?`)) {
-      AdminDataService.banUser(userId);
-      AdminDataService.resolveReport(reportId, 'resolved', 'User banned for policy violation');
-      setReports(AdminDataService.getReports());
+      await AdminDataService.banUser(userId);
+      await AdminDataService.resolveReport(reportId, 'resolved', 'User banned for policy violation');
+      await loadReports();
       alert(`User ${userId} banned.`);
     }
   };

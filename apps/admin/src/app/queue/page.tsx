@@ -1,26 +1,42 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { AdminDataService } from '../../lib/adminData';
 import { Submission } from '@365/core';
-import { Trash2, CheckCircle, Search, ExternalLink, ShieldAlert } from 'lucide-react';
+import { Trash2, CheckCircle, Search, ExternalLink, ShieldAlert, Loader2 } from 'lucide-react';
 
 export default function QueuePage() {
   const [submissions, setSubmissions] = useState<Submission[]>(AdminDataService.getSubmissions());
   const [searchFilter, setSearchFilter] = useState('');
   const [selectedSub, setSelectedSub] = useState<Submission | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const handleRemove = (id: string) => {
-    if (confirm('Are you sure you want to remove this submission from the queue?')) {
-      AdminDataService.removeSubmission(id, 'Removed by admin moderator');
-      setSubmissions(AdminDataService.getSubmissions());
+  const loadSubmissions = async () => {
+    try {
+      const data = await AdminDataService.fetchSubmissions();
+      setSubmissions(data);
+    } catch (e) {
+      console.warn('Error fetching submissions:', e);
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const handleBanUser = (userId: string, username: string) => {
+  useEffect(() => {
+    loadSubmissions();
+  }, []);
+
+  const handleRemove = async (id: string) => {
+    if (confirm('Are you sure you want to remove this submission from the queue?')) {
+      await AdminDataService.removeSubmission(id, 'Removed by admin moderator');
+      await loadSubmissions();
+    }
+  };
+
+  const handleBanUser = async (userId: string, username: string) => {
     if (confirm(`Ban user @${username}? This will remove all their submissions.`)) {
-      AdminDataService.banUser(userId);
-      setSubmissions(AdminDataService.getSubmissions());
+      await AdminDataService.banUser(userId);
+      await loadSubmissions();
       alert(`User @${username} has been banned.`);
     }
   };

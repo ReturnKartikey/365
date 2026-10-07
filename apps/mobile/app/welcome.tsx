@@ -9,10 +9,12 @@ import {
   Modal,
   TouchableOpacity,
   Image,
+  TextInput,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { Sparkles } from 'lucide-react-native';
+import { Sparkles, UserPlus, ArrowRight } from 'lucide-react-native';
 import { useTheme } from '../src/theme/ThemeContext';
 import { useAuth } from '../src/services/AuthContext';
 import { M3Button } from '../src/components/M3Button';
@@ -28,6 +30,10 @@ export default function WelcomeScreen() {
   const [loadingGoogle, setLoadingGoogle] = useState(false);
   const [loadingGuest, setLoadingGuest] = useState(false);
   const [showAccountChooser, setShowAccountChooser] = useState(false);
+  const [signingInEmail, setSigningInEmail] = useState<string | null>(null);
+  const [showAddAccount, setShowAddAccount] = useState(false);
+  const [newEmail, setNewEmail] = useState('');
+  const [authError, setAuthError] = useState<string | null>(null);
 
   useEffect(() => {
     if (user) {
@@ -60,14 +66,23 @@ export default function WelcomeScreen() {
   };
 
   const handleVerifiedSignIn = async (email: string) => {
+    const trimmed = email.trim().toLowerCase();
+    if (!trimmed || !trimmed.includes('@')) {
+      setAuthError('Please enter a valid Google email address');
+      return;
+    }
     try {
+      setAuthError(null);
+      setSigningInEmail(trimmed);
       setLoadingGoogle(true);
+      await signInWithVerifiedEmail(trimmed);
       setShowAccountChooser(false);
-      await signInWithVerifiedEmail(email);
       router.replace('/(tabs)');
-    } catch (e) {
+    } catch (e: any) {
       console.error('Verified sign in error:', e);
       setLoadingGoogle(false);
+      setSigningInEmail(null);
+      setAuthError(e?.message || 'Could not sign in with this account. Please try again.');
     }
   };
 
@@ -176,13 +191,29 @@ export default function WelcomeScreen() {
           visible={showAccountChooser}
           transparent
           animationType="fade"
-          onRequestClose={() => setShowAccountChooser(false)}
+          onRequestClose={() => {
+            if (!signingInEmail) {
+              setShowAccountChooser(false);
+              setShowAddAccount(false);
+              setAuthError(null);
+            }
+          }}
         >
-          <TouchableOpacity
-            style={styles.modalOverlay}
-            activeOpacity={1}
-            onPress={() => setShowAccountChooser(false)}
-          >
+          <View style={styles.modalOverlay}>
+            {/* Absolute backdrop: click outside to dismiss */}
+            <TouchableOpacity
+              style={StyleSheet.absoluteFill}
+              activeOpacity={1}
+              onPress={() => {
+                if (!signingInEmail) {
+                  setShowAccountChooser(false);
+                  setShowAddAccount(false);
+                  setAuthError(null);
+                }
+              }}
+            />
+
+            {/* Modal Card - pure View container so inner Touchables receive touch events directly */}
             <View
               style={[
                 styles.modalCard,
@@ -191,43 +222,67 @@ export default function WelcomeScreen() {
                   borderColor: colors.outlineVariant || '#383531',
                 },
               ]}
-              onStartShouldSetResponder={() => true}
             >
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 4 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 2 }}>
                 <GoogleIcon size={22} color={colors.primary} />
                 <Text style={[styles.modalTitle, { color: colors.onSurface }]}>
                   Sign in with Google
                 </Text>
               </View>
               <Text style={[styles.modalSubtitle, { color: colors.onSurfaceVariant }]}>
-                Choose an account to continue to 365
+                Choose a saved account or add a new one to continue to 365
               </Text>
 
-              {/* Account 1: Kartikey */}
+              {/* Error banner if any */}
+              {authError && (
+                <View style={styles.errorBanner}>
+                  <Text style={styles.errorBannerText}>{authError}</Text>
+                </View>
+              )}
+
+              {/* Section Header: Saved Logins */}
+              <Text style={[styles.sectionHeading, { color: colors.primary }]}>
+                SAVED LOGINS
+              </Text>
+
+              {/* Account 1: Kartikey Negi */}
               <TouchableOpacity
                 style={[
                   styles.accountItem,
                   {
                     backgroundColor: colors.surfaceContainer || '#181715',
-                    borderColor: colors.outlineVariant || '#383531',
+                    borderColor:
+                      signingInEmail === 'kartikeynegi2000@gmail.com'
+                        ? colors.primary
+                        : colors.outlineVariant || '#383531',
                   },
                 ]}
                 onPress={() => handleVerifiedSignIn('kartikeynegi2000@gmail.com')}
                 activeOpacity={0.7}
+                disabled={Boolean(signingInEmail)}
               >
                 <Image
-                  source={{ uri: 'https://lh3.googleusercontent.com/a/ACg8ocJStECLLVvUkPElTtjP_PWjg4YDxhHXtC1S1ccpUBcPp2gfkP1E=s96-c' }}
+                  source={{
+                    uri: 'https://lh3.googleusercontent.com/a/ACg8ocJStECLLVvUkPElTtjP_PWjg4YDxhHXtC1S1ccpUBcPp2gfkP1E=s96-c',
+                  }}
                   style={styles.accountAvatar}
                 />
                 <View style={styles.accountInfo}>
-                  <Text style={[styles.accountName, { color: colors.onSurface }]}>KARTIKEY</Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                    <Text style={[styles.accountName, { color: colors.onSurface }]}>Kartikey Negi</Text>
+                    <Text style={{ fontSize: 12, color: colors.primary, opacity: 0.9 }}>@kartikeynegi</Text>
+                  </View>
                   <Text style={[styles.accountEmail, { color: colors.onSurfaceVariant }]}>
                     kartikeynegi2000@gmail.com
                   </Text>
                 </View>
-                <View style={[styles.verifiedBadge, { backgroundColor: 'rgba(34, 197, 94, 0.15)' }]}>
-                  <Text style={styles.verifiedText}>Google</Text>
-                </View>
+                {signingInEmail === 'kartikeynegi2000@gmail.com' ? (
+                  <ActivityIndicator size="small" color={colors.primary} />
+                ) : (
+                  <View style={[styles.verifiedBadge, { backgroundColor: 'rgba(34, 197, 94, 0.15)' }]}>
+                    <Text style={styles.verifiedText}>Google</Text>
+                  </View>
+                )}
               </TouchableOpacity>
 
               {/* Account 2: Yss */}
@@ -236,28 +291,124 @@ export default function WelcomeScreen() {
                   styles.accountItem,
                   {
                     backgroundColor: colors.surfaceContainer || '#181715',
-                    borderColor: colors.outlineVariant || '#383531',
+                    borderColor:
+                      signingInEmail === 'yss27008@gmail.com'
+                        ? colors.primary
+                        : colors.outlineVariant || '#383531',
                   },
                 ]}
                 onPress={() => handleVerifiedSignIn('yss27008@gmail.com')}
                 activeOpacity={0.7}
+                disabled={Boolean(signingInEmail)}
               >
                 <Image
-                  source={{ uri: 'https://lh3.googleusercontent.com/a/ACg8ocIYwGGTBhG4HP6lo6YLKgFNC-r7D6YuvyWa27tWHu0qeeVtzjE9=s96-c' }}
+                  source={{
+                    uri: 'https://lh3.googleusercontent.com/a/ACg8ocIYwGGTBhG4HP6lo6YLKgFNC-r7D6YuvyWa27tWHu0qeeVtzjE9=s96-c',
+                  }}
                   style={styles.accountAvatar}
                 />
                 <View style={styles.accountInfo}>
-                  <Text style={[styles.accountName, { color: colors.onSurface }]}>Yss</Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                    <Text style={[styles.accountName, { color: colors.onSurface }]}>Yss</Text>
+                    <Text style={{ fontSize: 12, color: colors.primary, opacity: 0.9 }}>@yss</Text>
+                  </View>
                   <Text style={[styles.accountEmail, { color: colors.onSurfaceVariant }]}>
                     yss27008@gmail.com
                   </Text>
                 </View>
-                <View style={[styles.verifiedBadge, { backgroundColor: 'rgba(34, 197, 94, 0.15)' }]}>
-                  <Text style={styles.verifiedText}>Google</Text>
-                </View>
+                {signingInEmail === 'yss27008@gmail.com' ? (
+                  <ActivityIndicator size="small" color={colors.primary} />
+                ) : (
+                  <View style={[styles.verifiedBadge, { backgroundColor: 'rgba(34, 197, 94, 0.15)' }]}>
+                    <Text style={styles.verifiedText}>Google</Text>
+                  </View>
+                )}
               </TouchableOpacity>
 
-              {/* Account 3: Use another account (Open in Browser) */}
+              {/* Section Header: ADD ANOTHER ACCOUNT */}
+              <Text style={[styles.sectionHeading, { color: colors.primary, marginTop: 4 }]}>
+                ADD ANOTHER ACCOUNT
+              </Text>
+
+              {showAddAccount ? (
+                <View
+                  style={[
+                    styles.addAccountBox,
+                    {
+                      backgroundColor: colors.surfaceContainer || '#181715',
+                      borderColor: colors.outlineVariant || '#383531',
+                    },
+                  ]}
+                >
+                  <Text style={{ fontSize: 12, color: colors.onSurfaceVariant, marginBottom: 6 }}>
+                    Enter any Google email address:
+                  </Text>
+                  <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
+                    <TextInput
+                      style={[
+                        styles.addAccountInput,
+                        {
+                          color: colors.onSurface,
+                          borderColor: colors.outlineVariant || '#383531',
+                          backgroundColor: colors.surfaceContainerHigh || '#201F1D',
+                        },
+                      ]}
+                      placeholder="yourname@gmail.com"
+                      placeholderTextColor={colors.onSurfaceVariant ? `${colors.onSurfaceVariant}66` : '#777'}
+                      value={newEmail}
+                      onChangeText={setNewEmail}
+                      autoCapitalize="none"
+                      keyboardType="email-address"
+                    />
+                    <TouchableOpacity
+                      style={[
+                        styles.addAccountSubmitBtn,
+                        { backgroundColor: colors.primary },
+                      ]}
+                      onPress={() => handleVerifiedSignIn(newEmail)}
+                      disabled={Boolean(signingInEmail) || !newEmail.trim()}
+                      activeOpacity={0.8}
+                    >
+                      {signingInEmail === newEmail.trim().toLowerCase() ? (
+                        <ActivityIndicator size="small" color={colors.onPrimary} />
+                      ) : (
+                        <ArrowRight size={18} color={colors.onPrimary} />
+                      )}
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              ) : (
+                <TouchableOpacity
+                  style={[
+                    styles.accountItem,
+                    {
+                      backgroundColor: colors.surfaceContainer || '#181715',
+                      borderColor: colors.outlineVariant || '#383531',
+                    },
+                  ]}
+                  onPress={() => setShowAddAccount(true)}
+                  activeOpacity={0.7}
+                >
+                  <View
+                    style={[
+                      styles.accountAvatar,
+                      { backgroundColor: colors.surfaceContainerHigh || '#282624' },
+                    ]}
+                  >
+                    <UserPlus size={18} color={colors.primary} />
+                  </View>
+                  <View style={styles.accountInfo}>
+                    <Text style={[styles.accountName, { color: colors.onSurface }]}>
+                      Add Google Account
+                    </Text>
+                    <Text style={[styles.accountEmail, { color: colors.onSurfaceVariant }]}>
+                      Sign in with another email address
+                    </Text>
+                  </View>
+                </TouchableOpacity>
+              )}
+
+              {/* Option: Standard Browser OAuth */}
               <TouchableOpacity
                 style={[
                   styles.accountItem,
@@ -279,10 +430,10 @@ export default function WelcomeScreen() {
                 </View>
                 <View style={styles.accountInfo}>
                   <Text style={[styles.accountName, { color: colors.onSurface }]}>
-                    Use another account
+                    Browser Google Sign-In
                   </Text>
                   <Text style={[styles.accountEmail, { color: colors.onSurfaceVariant }]}>
-                    Open Google sign-in in browser
+                    Open full Google account chooser in browser
                   </Text>
                 </View>
               </TouchableOpacity>
@@ -290,12 +441,16 @@ export default function WelcomeScreen() {
               {/* Cancel Button */}
               <TouchableOpacity
                 style={styles.modalCancel}
-                onPress={() => setShowAccountChooser(false)}
+                onPress={() => {
+                  setShowAccountChooser(false);
+                  setShowAddAccount(false);
+                  setAuthError(null);
+                }}
               >
                 <Text style={[styles.modalCancelText, { color: colors.primary }]}>Cancel</Text>
               </TouchableOpacity>
             </View>
-          </TouchableOpacity>
+          </View>
         </Modal>
       </View>
     </SafeAreaView>
@@ -419,6 +574,45 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: '#22c55e',
     fontWeight: '600',
+  },
+  sectionHeading: {
+    fontSize: 10,
+    fontWeight: '700',
+    letterSpacing: 1.2,
+    marginTop: 4,
+    marginBottom: -4,
+  },
+  errorBanner: {
+    backgroundColor: 'rgba(239, 68, 68, 0.15)',
+    borderWidth: 1,
+    borderColor: 'rgba(239, 68, 68, 0.4)',
+    borderRadius: 12,
+    padding: 10,
+  },
+  errorBannerText: {
+    color: '#f87171',
+    fontSize: 12,
+    lineHeight: 16,
+  },
+  addAccountBox: {
+    padding: 12,
+    borderRadius: 16,
+    borderWidth: 1,
+  },
+  addAccountInput: {
+    flex: 1,
+    height: 40,
+    borderWidth: 1,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    fontSize: 13,
+  },
+  addAccountSubmitBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   modalCancel: {
     marginTop: 8,

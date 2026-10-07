@@ -23,6 +23,63 @@ interface AuthContextType {
 
 const STORAGE_KEY = '365_user_session';
 
+const GUEST_ADJECTIVES = [
+  'cosmic', 'vinyl', 'echo', 'analog', 'sonic', 'velvet', 'groove',
+  'ambient', 'midnight', 'retro', 'indigo', 'neon', 'mellow',
+  'harmonic', 'astral', 'golden', 'stellar', 'lunar', 'vintage',
+  'drift', 'mystic', 'solitary', 'silent', 'reverie',
+];
+
+const GUEST_NOUNS = [
+  'wanderer', 'listener', 'seeker', 'scout', 'curator', 'voyager',
+  'drifter', 'tuner', 'nomad', 'spirit', 'cadence', 'audiophile',
+  'groover', 'strummer', 'selector', 'chaser', 'weaver',
+];
+
+export function generateRandomGuestIdentity(): { username: string; displayName: string } {
+  const adj = GUEST_ADJECTIVES[Math.floor(Math.random() * GUEST_ADJECTIVES.length)];
+  const noun = GUEST_NOUNS[Math.floor(Math.random() * GUEST_NOUNS.length)];
+  const num = Math.floor(100 + Math.random() * 900);
+
+  const username = `${adj}_${noun}_${num}`;
+  const displayName = `${adj.charAt(0).toUpperCase() + adj.slice(1)} ${noun.charAt(0).toUpperCase() + noun.slice(1)}`;
+
+  return { username, displayName };
+}
+
+export function formatEmailToUsernameAndDisplayName(email: string): { username: string; displayName: string } {
+  const local = (email.split('@')[0] || 'listener').trim().toLowerCase();
+  
+  // Strip trailing numbers (e.g. kartikeynegi2000 -> kartikeynegi, yss27008 -> yss)
+  let nameWithoutTrailingNumbers = local.replace(/\d+$/, '');
+  if (!nameWithoutTrailingNumbers || nameWithoutTrailingNumbers.length < 2) {
+    nameWithoutTrailingNumbers = local;
+  }
+  
+  // Clean alphanumeric + underscore
+  let username = nameWithoutTrailingNumbers.replace(/[^a-z0-9_]/g, '');
+  if (!username || username.length < 2) {
+    username = local.replace(/[^a-z0-9_]/g, '') || `user_${Math.floor(1000 + Math.random() * 9000)}`;
+  }
+  
+  // Format Display Name
+  let nameParts = (nameWithoutTrailingNumbers || local)
+    .replace(/[._\-+]/g, ' ')
+    .trim()
+    .split(/\s+/);
+  
+  let displayName = nameParts
+    .filter(Boolean)
+    .map((p) => p.charAt(0).toUpperCase() + p.slice(1))
+    .join(' ');
+    
+  if (!displayName) {
+    displayName = username.charAt(0).toUpperCase() + username.slice(1);
+  }
+
+  return { username, displayName };
+}
+
 const AuthContext = createContext<AuthContextType | null>(null);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -277,7 +334,51 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           });
 
           if (!sessionErr && sessionData?.user) {
-            const profile = await fetchSupabaseProfile(sessionData.user.id, sessionData.user.email);
+            const userId = sessionData.user.id;
+
+            // Check if profile in public.users has a proper username or needs a clean identity
+            const { data: existingUser } = await adminClient
+              .from('users')
+              .select('*')
+              .eq('id', userId)
+              .maybeSingle();
+
+            const { username: cleanUsername, displayName: cleanDisplayName } =
+              formatEmailToUsernameAndDisplayName(email);
+
+            if (!existingUser) {
+              await adminClient.from('users').insert({
+                id: userId,
+                email,
+                username: cleanUsername,
+                display_name: cleanDisplayName,
+                is_guest: false,
+                is_banned: false,
+                is_admin: false,
+                notification_prefs: { dailyRelease: true, songSelected: true },
+                push_tokens: [],
+                stats: { songs_featured: 0, listening_streak: 1, total_submissions: 0 },
+              });
+            } else if (
+              !existingUser.username ||
+              existingUser.username.startsWith('listener_') ||
+              existingUser.username === email
+            ) {
+              await adminClient
+                .from('users')
+                .update({
+                  username: cleanUsername,
+                  display_name:
+                    existingUser.display_name && existingUser.display_name !== existingUser.username
+                      ? existingUser.display_name
+                      : cleanDisplayName,
+                  is_guest: false,
+                  updated_at: new Date().toISOString(),
+                })
+                .eq('id', userId);
+            }
+
+            const profile = await fetchSupabaseProfile(userId, email);
             if (profile) {
               await saveUser(profile);
               return profile;
@@ -290,13 +391,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const signInAsGuest = async (): Promise<UserProfile> => {
+    const { username: guestUsername, displayName: guestDisplayName } = generateRandomGuestIdentity();
+
     if (isSupabaseConfigured) {
       try {
         const { data, error } = await supabase.auth.signInAnonymously();
         if (data?.user && !error) {
+          // Sync creative guest identity into Supabase
+          await supabase
+            .from('users')
+            .update({
+              username: guestUsername,
+              display_name: guestDisplayName,
+              is_guest: true,
+            })
+            .eq('id', data.user.id);
+
           const profile = await fetchSupabaseProfile(data.user.id);
           if (profile) {
-            saveUser(profile);
+            await saveUser(profile);
             return profile;
           }
         }
@@ -308,8 +421,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const guestUser: UserProfile = {
       id: `usr_guest_${Date.now()}`,
       authProvider: 'guest',
-      displayName: 'Guest Listener',
-      username: `listener_${Math.floor(1000 + Math.random() * 9000)}`,
+      displayName: guestDisplayName,
+      username: guestUsername,
       isGuest: true,
       isBanned: false,
       notificationPrefs: {

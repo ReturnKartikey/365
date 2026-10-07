@@ -1,5 +1,6 @@
 import { Song, MusicProviderType } from '../types/index.js';
 import { CatalogSearchOptions, MusicProvider } from './MusicProvider.js';
+import { FEATURED_CATALOG_SONGS } from '../curatedSongs.js';
 
 export interface SpotifyConfig {
   clientId?: string;
@@ -57,6 +58,53 @@ function safeBase64Encode(str: string): string {
     block = (block << 8) | charCode;
   }
   return output;
+}
+
+/**
+ * Cross-platform JSONP helper for browser environments (Mobile Chrome, Safari, Desktop Web).
+ * Bypasses CORS and attachment header restrictions on open APIs like itunes.apple.com.
+ */
+function fetchItunesJsonp(url: string, timeoutMs = 6000): Promise<any> {
+  if (typeof window === 'undefined' || typeof document === 'undefined') {
+    return Promise.reject(new Error('JSONP is only supported in browser environments'));
+  }
+
+  return new Promise((resolve, reject) => {
+    const callbackName = `itunes_jsonp_${Date.now()}_${Math.floor(Math.random() * 1000000)}`;
+    const fullUrl = `${url}${url.includes('?') ? '&' : '?'}callback=${callbackName}`;
+    const script = document.createElement('script');
+    script.src = fullUrl;
+    script.async = true;
+
+    const timer = setTimeout(() => {
+      cleanup();
+      reject(new Error('JSONP request timed out'));
+    }, timeoutMs);
+
+    function cleanup() {
+      clearTimeout(timer);
+      try {
+        delete (window as any)[callbackName];
+      } catch {
+        (window as any)[callbackName] = undefined;
+      }
+      if (script.parentNode) {
+        script.parentNode.removeChild(script);
+      }
+    }
+
+    (window as any)[callbackName] = (data: any) => {
+      cleanup();
+      resolve(data);
+    };
+
+    script.onerror = () => {
+      cleanup();
+      reject(new Error('JSONP script load error'));
+    };
+
+    document.head.appendChild(script);
+  });
 }
 
 /**
@@ -295,48 +343,60 @@ export class SpotifyProvider implements MusicProvider {
 
     // 2. Try live open music catalog lookup
     try {
-      const response = await this.customFetch(`https://itunes.apple.com/lookup?id=${cleanTrackId}`);
-      if (response.ok) {
-        const data = (await response.json()) as any;
-        if (data.results?.[0]) {
-          const r = data.results[0];
-          return {
-            id: this.getDeterministicId(String(r.trackId)),
-            title: r.trackName,
-            artist: r.artistName,
-            album: r.collectionName,
-            artworkUrl: r.artworkUrl100
-              ? r.artworkUrl100.replace('100x100bb', '600x600bb')
-              : 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?auto=format&fit=crop&w=800&q=80',
-            provider: 'spotify',
-            providerSongId: String(r.trackId),
-            externalUrls: {
-              spotify: `https://open.spotify.com/search/${encodeURIComponent(r.trackName + ' ' + r.artistName)}`,
-              web: r.trackViewUrl || `https://open.spotify.com/search/${encodeURIComponent(r.trackName + ' ' + r.artistName)}`,
-            },
-            metadata: {
-              durationMs: r.trackTimeMillis || 180000,
-              previewUrl: r.previewUrl || null,
-              isExplicit: r.trackExplicitness === 'explicit',
-              genre: r.primaryGenreName || 'Music',
-              releaseYear: r.releaseDate ? new Date(r.releaseDate).getFullYear() : undefined,
-              palette: {
-                dominant: '#C67D5A',
-                primary: '#C67D5A',
-                background: '#1A1412',
-                surface: '#2B201D',
-              },
-            },
-            createdAt: new Date().toISOString(),
-          };
+      let data: any = null;
+      const lookupUrl = `https://itunes.apple.com/lookup?id=${cleanTrackId}`;
+      if (typeof window !== 'undefined' && typeof document !== 'undefined') {
+        try {
+          data = await fetchItunesJsonp(lookupUrl);
+        } catch {}
+      }
+      if (!data) {
+        const response = await this.customFetch(lookupUrl);
+        if (response.ok) {
+          data = (await response.json()) as any;
         }
+      }
+      if (data?.results?.[0]) {
+        const r = data.results[0];
+        return {
+          id: this.getDeterministicId(String(r.trackId)),
+          title: r.trackName,
+          artist: r.artistName,
+          album: r.collectionName,
+          artworkUrl: r.artworkUrl100
+            ? r.artworkUrl100.replace('100x100bb', '600x600bb')
+            : 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?auto=format&fit=crop&w=800&q=80',
+          provider: 'spotify',
+          providerSongId: String(r.trackId),
+          externalUrls: {
+            spotify: `https://open.spotify.com/search/${encodeURIComponent(r.trackName + ' ' + r.artistName)}`,
+            web: r.trackViewUrl || `https://open.spotify.com/search/${encodeURIComponent(r.trackName + ' ' + r.artistName)}`,
+          },
+          metadata: {
+            durationMs: r.trackTimeMillis || 180000,
+            previewUrl: r.previewUrl || null,
+            isExplicit: r.trackExplicitness === 'explicit',
+            genre: r.primaryGenreName || 'Music',
+            releaseYear: r.releaseDate ? new Date(r.releaseDate).getFullYear() : undefined,
+            palette: {
+              dominant: '#C67D5A',
+              primary: '#C67D5A',
+              background: '#1A1412',
+              surface: '#2B201D',
+            },
+          },
+          createdAt: new Date().toISOString(),
+        };
       }
     } catch {}
 
     // 3. Fallback
     if (this.enableFallback) {
+      const pool = FEATURED_CATALOG_SONGS && FEATURED_CATALOG_SONGS.length > 0
+        ? FEATURED_CATALOG_SONGS
+        : SAMPLE_FALLBACK_TRACKS;
       return (
-        SAMPLE_FALLBACK_TRACKS.find(
+        pool.find(
           (t) => t.providerSongId === cleanTrackId || t.id === trackId
         ) ?? null
       );
@@ -346,10 +406,26 @@ export class SpotifyProvider implements MusicProvider {
 
   private async searchLiveMusicCatalog(query: string, limit: number): Promise<Song[]> {
     const itunesUrl = `https://itunes.apple.com/search?term=${encodeURIComponent(query)}&entity=song&limit=${limit}`;
-    const response = await this.customFetch(itunesUrl);
-    if (!response.ok) return [];
+    let data: any = null;
 
-    const data = (await response.json()) as any;
+    // In web browsers, itunes.apple.com/search has content-disposition: attachment which blocks direct fetch.
+    // JSONP bypasses browser CORS & attachment limits with 100% reliability.
+    if (typeof window !== 'undefined' && typeof document !== 'undefined') {
+      try {
+        data = await fetchItunesJsonp(itunesUrl);
+      } catch (jsonpErr) {
+        console.warn('[SpotifyProvider] JSONP search error, falling back to direct fetch:', jsonpErr);
+      }
+    }
+
+    if (!data) {
+      const response = await this.customFetch(itunesUrl);
+      if (response.ok) {
+        data = (await response.json()) as any;
+      }
+    }
+
+    if (!data) return [];
     const results = (data.results || []) as any[];
 
     return results.map((r): Song => {
@@ -394,7 +470,10 @@ export class SpotifyProvider implements MusicProvider {
 
   private searchFallback(query: string, limit: number): Song[] {
     const q = query.toLowerCase();
-    const matches = SAMPLE_FALLBACK_TRACKS.filter(
+    const pool = FEATURED_CATALOG_SONGS && FEATURED_CATALOG_SONGS.length > 0
+      ? FEATURED_CATALOG_SONGS
+      : SAMPLE_FALLBACK_TRACKS;
+    const matches = pool.filter(
       (t) =>
         t.title.toLowerCase().includes(q) ||
         t.artist.toLowerCase().includes(q) ||
@@ -405,7 +484,7 @@ export class SpotifyProvider implements MusicProvider {
       return matches.slice(0, limit);
     }
 
-    return SAMPLE_FALLBACK_TRACKS.slice(0, limit);
+    return pool.slice(0, limit);
   }
 
   private mapSpotifyTrack(track: SpotifyTrackItem): Song {

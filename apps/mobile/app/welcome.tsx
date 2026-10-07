@@ -43,8 +43,14 @@ export default function WelcomeScreen() {
     return () => sub.remove();
   }, []);
 
-  const handleGoogleSignInPress = () => {
-    setShowAccountChooser(true);
+  const handleGoogleSignInPress = async () => {
+    try {
+      setLoadingGoogle(true);
+      await signInWithGoogle();
+    } catch (e: any) {
+      console.warn('Google sign-in error:', e);
+      setLoadingGoogle(false);
+    }
   };
 
   const handleVerifiedSignIn = async (email: string) => {
@@ -55,17 +61,6 @@ export default function WelcomeScreen() {
       router.replace('/(tabs)');
     } catch (e) {
       console.error('Verified sign in error:', e);
-      setLoadingGoogle(false);
-    }
-  };
-
-  const handleBrowserOAuth = async () => {
-    try {
-      setLoadingGoogle(true);
-      setShowAccountChooser(false);
-      await signInWithGoogle();
-    } catch (e) {
-      console.error(e);
       setLoadingGoogle(false);
     }
   };
@@ -167,6 +162,17 @@ export default function WelcomeScreen() {
             ]}
             textStyle={{ color: colors.onSurface }}
           />
+
+          {/* Optional developer testing link for local test environments */}
+          <TouchableOpacity
+            onPress={() => setShowAccountChooser(true)}
+            activeOpacity={0.6}
+            style={{ marginTop: 12, paddingVertical: 6, alignItems: 'center' }}
+          >
+            <Text style={{ fontSize: 11, color: colors.onSurfaceVariant, opacity: 0.4 }}>
+              Developer Fast Login
+            </Text>
+          </TouchableOpacity>
         </View>
 
         {/* 4. Google Account Chooser Modal (Direct Supabase Auth Bridge) */}
@@ -259,7 +265,10 @@ export default function WelcomeScreen() {
                     borderColor: colors.outlineVariant || '#383531',
                   },
                 ]}
-                onPress={handleBrowserOAuth}
+                onPress={() => {
+                  setShowAccountChooser(false);
+                  handleGoogleSignInPress();
+                }}
                 activeOpacity={0.7}
               >
                 <View

@@ -3,8 +3,13 @@ import type { UserProfile } from '@365/core';
 import { supabase, isSupabaseConfigured } from './supabase';
 import { createClient } from '@supabase/supabase-js';
 import { AppStorage } from './storage';
-import { Platform, Linking } from 'react-native';
+import { Platform } from 'react-native';
+import * as WebBrowser from 'expo-web-browser';
+import * as Linking from 'expo-linking';
 import queryString from 'query-string';
+
+// Complete any pending browser auth sessions on load
+WebBrowser.maybeCompleteAuthSession();
 
 interface AuthContextType {
   user: UserProfile | null;
@@ -163,17 +168,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const signInWithGoogle = async (): Promise<UserProfile> => {
     if (isSupabaseConfigured) {
       if (Platform.OS === 'web') {
+        const redirectUrl = typeof window !== 'undefined'
+          ? `${window.location.origin}/auth-callback`
+          : undefined;
+
         const { error } = await supabase.auth.signInWithOAuth({
           provider: 'google',
           options: {
-            redirectTo: typeof window !== 'undefined' ? window.location.origin : undefined,
+            redirectTo: redirectUrl,
           },
         });
         if (error) throw error;
         return new Promise(() => {});
       } else {
-        // Native mobile OAuth using Web-Bridge callback to avoid Android Chrome 302 custom scheme block
-        const redirectUrl = 'http://192.168.1.36:8081/auth-callback';
+        // Native mobile OAuth using WebBrowser and Expo Linking
+        const redirectUrl = Linking.createURL('auth-callback');
         const { data, error } = await supabase.auth.signInWithOAuth({
           provider: 'google',
           options: {
@@ -188,8 +197,37 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
 
         if (data?.url) {
-          await Linking.openURL(data.url);
-          return {} as UserProfile;
+          const authResult = await WebBrowser.openAuthSessionAsync(data.url, redirectUrl);
+          if (authResult.type === 'success' && authResult.url) {
+            const url = authResult.url;
+            const hash = url.split('#')[1] || '';
+            const hashParams = queryString.parse(hash);
+            const parsedUrl = queryString.parseUrl(url);
+            const code = parsedUrl.query.code as string | undefined;
+
+            if (hashParams.access_token && hashParams.refresh_token) {
+              const { data: sessionData } = await supabase.auth.setSession({
+                access_token: hashParams.access_token as string,
+                refresh_token: hashParams.refresh_token as string,
+              });
+              if (sessionData?.user) {
+                const profile = await fetchSupabaseProfile(sessionData.user.id, sessionData.user.email);
+                if (profile) {
+                  await saveUser(profile);
+                  return profile;
+                }
+              }
+            } else if (code) {
+              const { data: sessionData } = await supabase.auth.exchangeCodeForSession(code);
+              if (sessionData?.user) {
+                const profile = await fetchSupabaseProfile(sessionData.user.id, sessionData.user.email);
+                if (profile) {
+                  await saveUser(profile);
+                  return profile;
+                }
+              }
+            }
+          }
         }
       }
     }

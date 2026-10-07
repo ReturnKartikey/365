@@ -1,55 +1,122 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Platform } from 'react-native';
+import { View, Text, StyleSheet, ActivityIndicator, Platform, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useRouter } from 'expo-router';
+import { supabase } from '../src/services/supabase';
+import queryString from 'query-string';
 
 export default function AuthCallbackScreen() {
-  const [deepLink, setDeepLink] = useState<string>('');
-  const [redirected, setRedirected] = useState<boolean>(false);
+  const router = useRouter();
+  const [status, setStatus] = useState<'verifying' | 'success' | 'error'>('verifying');
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   useEffect(() => {
-    if (Platform.OS === 'web' && typeof window !== 'undefined') {
-      const hash = window.location.hash || '';
-      const search = window.location.search || '';
-      const targetScheme = 'exp://192.168.1.36:8081/--/auth/callback';
-      const fullLink = targetScheme + search + hash;
-      setDeepLink(fullLink);
+    let isMounted = true;
 
-      // Attempt automatic redirect after slight delay
-      const timer = setTimeout(() => {
-        try {
-          window.location.href = fullLink;
-          setRedirected(true);
-        } catch (e) {
-          console.warn('Auto redirect failed, awaiting manual user tap:', e);
+    const processAuth = async () => {
+      try {
+        if (Platform.OS === 'web' && typeof window !== 'undefined') {
+          const hash = window.location.hash || '';
+          const search = window.location.search || '';
+
+          const hashParams = queryString.parse(hash.replace(/^#/, ''));
+          const searchParams = queryString.parse(search.replace(/^\?/, ''));
+
+          // Case 1: Implicit grant with hash tokens
+          if (hashParams.access_token && hashParams.refresh_token) {
+            const { data, error } = await supabase.auth.setSession({
+              access_token: hashParams.access_token as string,
+              refresh_token: hashParams.refresh_token as string,
+            });
+
+            if (error) throw error;
+            if (isMounted) {
+              setStatus('success');
+              router.replace('/(tabs)');
+            }
+            return;
+          }
+
+          // Case 2: PKCE authorization code grant
+          if (searchParams.code) {
+            const { data, error } = await supabase.auth.exchangeCodeForSession(
+              searchParams.code as string
+            );
+
+            if (error) throw error;
+            if (isMounted) {
+              setStatus('success');
+              router.replace('/(tabs)');
+            }
+            return;
+          }
         }
-      }, 300);
 
-      return () => clearTimeout(timer);
-    }
+        // Case 3: Check existing session or fallback
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session && isMounted) {
+          setStatus('success');
+          router.replace('/(tabs)');
+        } else {
+          // No tokens found, wait briefly and redirect to welcome
+          setTimeout(() => {
+            if (isMounted) router.replace('/welcome');
+          }, 1200);
+        }
+      } catch (err: any) {
+        console.error('[AuthCallback] Error completing authentication:', err);
+        if (isMounted) {
+          setStatus('error');
+          setErrorMessage(err?.message || 'Authentication verification failed.');
+        }
+      }
+    };
+
+    processAuth();
+
+    return () => {
+      isMounted = false;
+    };
   }, []);
-
-  const handleManualOpen = () => {
-    if (typeof window !== 'undefined' && deepLink) {
-      window.location.href = deepLink;
-      setRedirected(true);
-    }
-  };
 
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.card}>
         <Text style={styles.brandTitle}>365</Text>
-        <Text style={styles.headline}>Authentication Successful</Text>
-        <Text style={styles.subtitle}>
-          Your Google account has been verified. Tap below to return to the 365 app.
-        </Text>
 
-        <TouchableOpacity style={styles.button} onPress={handleManualOpen} activeOpacity={0.85}>
-          <Text style={styles.buttonText}>Open 365 App</Text>
-        </TouchableOpacity>
+        {status === 'verifying' && (
+          <>
+            <ActivityIndicator size="large" color="#D4A373" style={{ marginBottom: 20 }} />
+            <Text style={styles.headline}>Signing You In...</Text>
+            <Text style={styles.subtitle}>
+              Verifying your Google credentials with 365. Just a moment.
+            </Text>
+          </>
+        )}
 
-        {redirected && (
-          <Text style={styles.statusText}>Opening the 365 app in Expo Go...</Text>
+        {status === 'success' && (
+          <>
+            <Text style={styles.headline}>Welcome to 365</Text>
+            <Text style={styles.subtitle}>
+              Authentication successful! Entering today's listening ritual...
+            </Text>
+          </>
+        )}
+
+        {status === 'error' && (
+          <>
+            <Text style={[styles.headline, { color: '#F87171' }]}>Sign-In Failed</Text>
+            <Text style={styles.subtitle}>
+              {errorMessage || 'Unable to complete sign-in. Please try again.'}
+            </Text>
+            <TouchableOpacity
+              style={styles.button}
+              onPress={() => router.replace('/welcome')}
+              activeOpacity={0.85}
+            >
+              <Text style={styles.buttonText}>Return to Sign In</Text>
+            </TouchableOpacity>
+          </>
         )}
       </View>
     </SafeAreaView>
@@ -78,7 +145,7 @@ const styles = StyleSheet.create({
     fontSize: 48,
     fontWeight: '700',
     color: '#D4A373',
-    marginBottom: 16,
+    marginBottom: 20,
     fontFamily: 'serif',
   },
   headline: {
@@ -93,25 +160,18 @@ const styles = StyleSheet.create({
     color: '#A8A29E',
     textAlign: 'center',
     lineHeight: 22,
-    marginBottom: 32,
+    marginBottom: 24,
   },
   button: {
     backgroundColor: '#D4A373',
-    paddingVertical: 16,
-    paddingHorizontal: 36,
-    borderRadius: 100,
-    width: '100%',
+    paddingVertical: 14,
+    paddingHorizontal: 28,
+    borderRadius: 9999,
     alignItems: 'center',
-    elevation: 3,
   },
   buttonText: {
-    color: '#1A1816',
-    fontSize: 16,
-    fontWeight: '700',
-  },
-  statusText: {
-    marginTop: 16,
-    fontSize: 13,
-    color: '#86EFAC',
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#1A1412',
   },
 });

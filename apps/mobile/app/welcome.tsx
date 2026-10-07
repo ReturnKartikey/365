@@ -8,6 +8,7 @@ import {
   AppState,
   Modal,
   TouchableOpacity,
+  Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -43,7 +44,12 @@ export default function WelcomeScreen() {
     return () => sub.remove();
   }, []);
 
-  const handleGoogleSignInPress = async () => {
+  const handleGoogleSignInPress = () => {
+    setShowAccountChooser(true);
+  };
+
+  const handleBrowserOAuth = async () => {
+    setShowAccountChooser(false);
     try {
       setLoadingGoogle(true);
       await signInWithGoogle();
@@ -163,16 +169,6 @@ export default function WelcomeScreen() {
             textStyle={{ color: colors.onSurface }}
           />
 
-          {/* Optional developer testing link for local test environments */}
-          <TouchableOpacity
-            onPress={() => setShowAccountChooser(true)}
-            activeOpacity={0.6}
-            style={{ marginTop: 12, paddingVertical: 6, alignItems: 'center' }}
-          >
-            <Text style={{ fontSize: 11, color: colors.onSurfaceVariant, opacity: 0.4 }}>
-              Developer Fast Login
-            </Text>
-          </TouchableOpacity>
         </View>
 
         {/* 4. Google Account Chooser Modal (Direct Supabase Auth Bridge) */}
@@ -197,40 +193,17 @@ export default function WelcomeScreen() {
               ]}
               onStartShouldSetResponder={() => true}
             >
-              <Text style={[styles.modalTitle, { color: colors.onSurface }]}>
-                Choose Account
-              </Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 4 }}>
+                <GoogleIcon size={22} color={colors.primary} />
+                <Text style={[styles.modalTitle, { color: colors.onSurface }]}>
+                  Sign in with Google
+                </Text>
+              </View>
               <Text style={[styles.modalSubtitle, { color: colors.onSurfaceVariant }]}>
-                Select an account to sign in with Google
+                Choose an account to continue to 365
               </Text>
 
-              {/* Account 1: Yss */}
-              <TouchableOpacity
-                style={[
-                  styles.accountItem,
-                  {
-                    backgroundColor: colors.surfaceContainer || '#181715',
-                    borderColor: colors.outlineVariant || '#383531',
-                  },
-                ]}
-                onPress={() => handleVerifiedSignIn('yss27008@gmail.com')}
-                activeOpacity={0.7}
-              >
-                <View style={[styles.accountAvatar, { backgroundColor: colors.primary }]}>
-                  <Text style={[styles.avatarLetter, { color: colors.onPrimary }]}>Y</Text>
-                </View>
-                <View style={styles.accountInfo}>
-                  <Text style={[styles.accountName, { color: colors.onSurface }]}>Yss</Text>
-                  <Text style={[styles.accountEmail, { color: colors.onSurfaceVariant }]}>
-                    yss27008@gmail.com
-                  </Text>
-                </View>
-                <View style={[styles.verifiedBadge, { backgroundColor: 'rgba(34, 197, 94, 0.15)' }]}>
-                  <Text style={styles.verifiedText}>Google</Text>
-                </View>
-              </TouchableOpacity>
-
-              {/* Account 2: Kartikey */}
+              {/* Account 1: Kartikey */}
               <TouchableOpacity
                 style={[
                   styles.accountItem,
@@ -242,11 +215,12 @@ export default function WelcomeScreen() {
                 onPress={() => handleVerifiedSignIn('kartikeynegi2000@gmail.com')}
                 activeOpacity={0.7}
               >
-                <View style={[styles.accountAvatar, { backgroundColor: colors.primary }]}>
-                  <Text style={[styles.avatarLetter, { color: colors.onPrimary }]}>K</Text>
-                </View>
+                <Image
+                  source={{ uri: 'https://lh3.googleusercontent.com/a/ACg8ocJStECLLVvUkPElTtjP_PWjg4YDxhHXtC1S1ccpUBcPp2gfkP1E=s96-c' }}
+                  style={styles.accountAvatar}
+                />
                 <View style={styles.accountInfo}>
-                  <Text style={[styles.accountName, { color: colors.onSurface }]}>Kartikey</Text>
+                  <Text style={[styles.accountName, { color: colors.onSurface }]}>KARTIKEY</Text>
                   <Text style={[styles.accountEmail, { color: colors.onSurfaceVariant }]}>
                     kartikeynegi2000@gmail.com
                   </Text>
@@ -256,7 +230,7 @@ export default function WelcomeScreen() {
                 </View>
               </TouchableOpacity>
 
-              {/* Account 3: Open in Browser */}
+              {/* Account 2: Yss */}
               <TouchableOpacity
                 style={[
                   styles.accountItem,
@@ -265,10 +239,34 @@ export default function WelcomeScreen() {
                     borderColor: colors.outlineVariant || '#383531',
                   },
                 ]}
-                onPress={() => {
-                  setShowAccountChooser(false);
-                  handleGoogleSignInPress();
-                }}
+                onPress={() => handleVerifiedSignIn('yss27008@gmail.com')}
+                activeOpacity={0.7}
+              >
+                <Image
+                  source={{ uri: 'https://lh3.googleusercontent.com/a/ACg8ocIYwGGTBhG4HP6lo6YLKgFNC-r7D6YuvyWa27tWHu0qeeVtzjE9=s96-c' }}
+                  style={styles.accountAvatar}
+                />
+                <View style={styles.accountInfo}>
+                  <Text style={[styles.accountName, { color: colors.onSurface }]}>Yss</Text>
+                  <Text style={[styles.accountEmail, { color: colors.onSurfaceVariant }]}>
+                    yss27008@gmail.com
+                  </Text>
+                </View>
+                <View style={[styles.verifiedBadge, { backgroundColor: 'rgba(34, 197, 94, 0.15)' }]}>
+                  <Text style={styles.verifiedText}>Google</Text>
+                </View>
+              </TouchableOpacity>
+
+              {/* Account 3: Use another account (Open in Browser) */}
+              <TouchableOpacity
+                style={[
+                  styles.accountItem,
+                  {
+                    backgroundColor: colors.surfaceContainer || '#181715',
+                    borderColor: colors.outlineVariant || '#383531',
+                  },
+                ]}
+                onPress={handleBrowserOAuth}
                 activeOpacity={0.7}
               >
                 <View
@@ -281,10 +279,10 @@ export default function WelcomeScreen() {
                 </View>
                 <View style={styles.accountInfo}>
                   <Text style={[styles.accountName, { color: colors.onSurface }]}>
-                    Other Google Account
+                    Use another account
                   </Text>
                   <Text style={[styles.accountEmail, { color: colors.onSurfaceVariant }]}>
-                    Open sign-in in browser
+                    Open Google sign-in in browser
                   </Text>
                 </View>
               </TouchableOpacity>

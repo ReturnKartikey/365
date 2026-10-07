@@ -228,7 +228,7 @@ export default function TodayScreen() {
           {/* Instagram-style Hook Play Button */}
           <HookPlayButton
             song={todayData.song}
-            durationSeconds={15}
+            durationSeconds={30}
             style={styles.hookPlayButton}
           />
 

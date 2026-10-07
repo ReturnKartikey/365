@@ -135,8 +135,9 @@ export const HookPlayButton: React.FC<HookPlayButtonProps> = ({
       setIsPlaying(true);
       const current = currentProgressRef.current;
 
-      if (song.metadata?.previewUrl) {
-        await GlobalAudioService.playPreview(song.metadata.previewUrl, (status) => {
+      const previewUrl = song.metadata?.previewUrl || (song as any).previewUrl;
+      if (previewUrl) {
+        await GlobalAudioService.playPreview(previewUrl, (status) => {
           if (status.didJustFinish) {
             stopPlayback();
           }

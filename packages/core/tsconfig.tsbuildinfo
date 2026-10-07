@@ -1,1 +1,1 @@
-{"root":["./src/index.ts","./src/providers/musicprovider.ts","./src/providers/spotifyprovider.ts","./src/rules/submissionrules.ts","./src/selectors/songselector.ts","./src/test/core.test.ts","./src/types/index.ts"],"version":"5.9.3"}
+{"root":["./src/curatedsongs.ts","./src/index.ts","./src/providers/musicprovider.ts","./src/providers/spotifyprovider.ts","./src/rules/submissionrules.ts","./src/selectors/songselector.ts","./src/test/core.test.ts","./src/types/index.ts"],"version":"5.9.3"}

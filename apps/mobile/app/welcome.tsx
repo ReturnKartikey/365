@@ -11,6 +11,7 @@ import {
   Image,
   TextInput,
   ActivityIndicator,
+  ScrollView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -20,6 +21,39 @@ import { useAuth } from '../src/services/AuthContext';
 import { M3Button } from '../src/components/M3Button';
 import { GoogleIcon } from '../src/components/GoogleIcon';
 import { LoginVinylDisc } from '../src/components/LoginVinylDisc';
+
+interface SavedAccount {
+  name: string;
+  username: string;
+  email: string;
+  avatar?: string;
+}
+
+const SAVED_ACCOUNTS: SavedAccount[] = [
+  {
+    name: 'Kartikey Negi',
+    username: '@kartikeynegi',
+    email: 'kartikeynegi2000@gmail.com',
+    avatar: 'https://lh3.googleusercontent.com/a/ACg8ocJStECLLVvUkPElTtjP_PWjg4YDxhHXtC1S1ccpUBcPp2gfkP1E=s96-c',
+  },
+  {
+    name: 'Yss',
+    username: '@yss',
+    email: 'yss27008@gmail.com',
+    avatar: 'https://lh3.googleusercontent.com/a/ACg8ocIYwGGTBhG4HP6lo6YLKgFNC-r7D6YuvyWa27tWHu0qeeVtzjE9=s96-c',
+  },
+  {
+    name: 'Kartikey Negi (Work)',
+    username: '@kartikeywork',
+    email: 'kartikeynegi2000.work@gmail.com',
+    avatar: 'https://lh3.googleusercontent.com/a/ACg8ocJStECLLVvUkPElTtjP_PWjg4YDxhHXtC1S1ccpUBcPp2gfkP1E=s96-c',
+  },
+  {
+    name: 'Kannu Bhati',
+    username: '@kannubhati',
+    email: 'kannubhati03@gmail.com',
+  },
+];
 
 export default function WelcomeScreen() {
   const { colors, typography, shapes } = useTheme();
@@ -245,85 +279,70 @@ export default function WelcomeScreen() {
                 SAVED LOGINS
               </Text>
 
-              {/* Account 1: Kartikey Negi */}
-              <TouchableOpacity
-                style={[
-                  styles.accountItem,
-                  {
-                    backgroundColor: colors.surfaceContainer || '#181715',
-                    borderColor:
-                      signingInEmail === 'kartikeynegi2000@gmail.com'
-                        ? colors.primary
-                        : colors.outlineVariant || '#383531',
-                  },
-                ]}
-                onPress={() => handleVerifiedSignIn('kartikeynegi2000@gmail.com')}
-                activeOpacity={0.7}
-                disabled={Boolean(signingInEmail)}
+              <ScrollView
+                style={{ maxHeight: 220 }}
+                contentContainerStyle={{ gap: 8 }}
+                showsVerticalScrollIndicator={false}
               >
-                <Image
-                  source={{
-                    uri: 'https://lh3.googleusercontent.com/a/ACg8ocJStECLLVvUkPElTtjP_PWjg4YDxhHXtC1S1ccpUBcPp2gfkP1E=s96-c',
-                  }}
-                  style={styles.accountAvatar}
-                />
-                <View style={styles.accountInfo}>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                    <Text style={[styles.accountName, { color: colors.onSurface }]}>Kartikey Negi</Text>
-                    <Text style={{ fontSize: 12, color: colors.primary, opacity: 0.9 }}>@kartikeynegi</Text>
-                  </View>
-                  <Text style={[styles.accountEmail, { color: colors.onSurfaceVariant }]}>
-                    kartikeynegi2000@gmail.com
-                  </Text>
-                </View>
-                {signingInEmail === 'kartikeynegi2000@gmail.com' ? (
-                  <ActivityIndicator size="small" color={colors.primary} />
-                ) : (
-                  <View style={[styles.verifiedBadge, { backgroundColor: 'rgba(34, 197, 94, 0.15)' }]}>
-                    <Text style={styles.verifiedText}>Google</Text>
-                  </View>
-                )}
-              </TouchableOpacity>
-
-              {/* Account 2: Yss */}
-              <TouchableOpacity
-                style={[
-                  styles.accountItem,
-                  {
-                    backgroundColor: colors.surfaceContainer || '#181715',
-                    borderColor:
-                      signingInEmail === 'yss27008@gmail.com'
-                        ? colors.primary
-                        : colors.outlineVariant || '#383531',
-                  },
-                ]}
-                onPress={() => handleVerifiedSignIn('yss27008@gmail.com')}
-                activeOpacity={0.7}
-                disabled={Boolean(signingInEmail)}
-              >
-                <Image
-                  source={{
-                    uri: 'https://lh3.googleusercontent.com/a/ACg8ocIYwGGTBhG4HP6lo6YLKgFNC-r7D6YuvyWa27tWHu0qeeVtzjE9=s96-c',
-                  }}
-                  style={styles.accountAvatar}
-                />
-                <View style={styles.accountInfo}>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                    <Text style={[styles.accountName, { color: colors.onSurface }]}>Yss</Text>
-                    <Text style={{ fontSize: 12, color: colors.primary, opacity: 0.9 }}>@yss</Text>
-                  </View>
-                  <Text style={[styles.accountEmail, { color: colors.onSurfaceVariant }]}>
-                    yss27008@gmail.com
-                  </Text>
-                </View>
-                {signingInEmail === 'yss27008@gmail.com' ? (
-                  <ActivityIndicator size="small" color={colors.primary} />
-                ) : (
-                  <View style={[styles.verifiedBadge, { backgroundColor: 'rgba(34, 197, 94, 0.15)' }]}>
-                    <Text style={styles.verifiedText}>Google</Text>
-                  </View>
-                )}
-              </TouchableOpacity>
+                {SAVED_ACCOUNTS.map((acc) => (
+                  <TouchableOpacity
+                    key={acc.email}
+                    style={[
+                      styles.accountItem,
+                      {
+                        backgroundColor: colors.surfaceContainer || '#181715',
+                        borderColor:
+                          signingInEmail === acc.email
+                            ? colors.primary
+                            : colors.outlineVariant || '#383531',
+                      },
+                    ]}
+                    onPress={() => handleVerifiedSignIn(acc.email)}
+                    activeOpacity={0.7}
+                    disabled={Boolean(signingInEmail)}
+                  >
+                    {acc.avatar ? (
+                      <Image source={{ uri: acc.avatar }} style={styles.accountAvatar} />
+                    ) : (
+                      <View
+                        style={[
+                          styles.accountAvatar,
+                          { backgroundColor: colors.surfaceContainerHigh || '#282624' },
+                        ]}
+                      >
+                        <Text style={[styles.avatarLetter, { color: colors.primary }]}>
+                          {acc.name.charAt(0)}
+                        </Text>
+                      </View>
+                    )}
+                    <View style={styles.accountInfo}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                        <Text style={[styles.accountName, { color: colors.onSurface }]}>
+                          {acc.name}
+                        </Text>
+                        <Text style={{ fontSize: 12, color: colors.primary, opacity: 0.9 }}>
+                          {acc.username}
+                        </Text>
+                      </View>
+                      <Text style={[styles.accountEmail, { color: colors.onSurfaceVariant }]}>
+                        {acc.email}
+                      </Text>
+                    </View>
+                    {signingInEmail === acc.email ? (
+                      <ActivityIndicator size="small" color={colors.primary} />
+                    ) : (
+                      <View
+                        style={[
+                          styles.verifiedBadge,
+                          { backgroundColor: 'rgba(34, 197, 94, 0.15)' },
+                        ]}
+                      >
+                        <Text style={styles.verifiedText}>Google</Text>
+                      </View>
+                    )}
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
 
               {/* Section Header: ADD ANOTHER ACCOUNT */}
               <Text style={[styles.sectionHeading, { color: colors.primary, marginTop: 4 }]}>

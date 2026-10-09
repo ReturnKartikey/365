@@ -4,12 +4,10 @@ import { supabase, isSupabaseConfigured } from './supabase';
 import { createClient } from '@supabase/supabase-js';
 import { AppStorage } from './storage';
 import { Platform } from 'react-native';
-import * as WebBrowser from 'expo-web-browser';
 import * as Linking from 'expo-linking';
+import Constants from 'expo-constants';
 import queryString from 'query-string';
-
-// Complete any pending browser auth sessions on load
-WebBrowser.maybeCompleteAuthSession();
+import { NotificationService } from './NotificationService';
 
 interface AuthContextType {
   user: UserProfile | null;
@@ -214,6 +212,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       if (newUser) {
         await AppStorage.setItem(STORAGE_KEY, JSON.stringify(newUser));
+        // Register device push token and sync to Supabase
+        NotificationService.registerForPushNotifications(newUser.id).catch((err) =>
+          console.warn('[AuthContext] Push token registration warning:', err)
+        );
       } else {
         await AppStorage.removeItem(STORAGE_KEY);
       }
@@ -238,7 +240,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (error) throw error;
         return new Promise(() => {});
       } else {
-        // Native mobile OAuth using WebBrowser and Expo Linking
+        // Native mobile OAuth using standard React Native Linking
         const redirectUrl = Linking.createURL('auth-callback');
         const { data, error } = await supabase.auth.signInWithOAuth({
           provider: 'google',
@@ -254,37 +256,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
 
         if (data?.url) {
-          const authResult = await WebBrowser.openAuthSessionAsync(data.url, redirectUrl);
-          if (authResult.type === 'success' && authResult.url) {
-            const url = authResult.url;
-            const hash = url.split('#')[1] || '';
-            const hashParams = queryString.parse(hash);
-            const parsedUrl = queryString.parseUrl(url);
-            const code = parsedUrl.query.code as string | undefined;
-
-            if (hashParams.access_token && hashParams.refresh_token) {
-              const { data: sessionData } = await supabase.auth.setSession({
-                access_token: hashParams.access_token as string,
-                refresh_token: hashParams.refresh_token as string,
-              });
-              if (sessionData?.user) {
-                const profile = await fetchSupabaseProfile(sessionData.user.id, sessionData.user.email);
-                if (profile) {
-                  await saveUser(profile);
-                  return profile;
-                }
-              }
-            } else if (code) {
-              const { data: sessionData } = await supabase.auth.exchangeCodeForSession(code);
-              if (sessionData?.user) {
-                const profile = await fetchSupabaseProfile(sessionData.user.id, sessionData.user.email);
-                if (profile) {
-                  await saveUser(profile);
-                  return profile;
-                }
-              }
-            }
-          }
+          await Linking.openURL(data.url);
+          return new Promise(() => {});
         }
       }
     }
@@ -313,96 +286,64 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const signInWithVerifiedEmail = async (email: string): Promise<UserProfile> => {
-    const serviceKey =
-      process.env.EXPO_PUBLIC_SUPABASE_SERVICE_ROLE_KEY ||
-      process.env.SUPABASE_SERVICE_ROLE_KEY ||
-      ['sb_secret', '0wL2JYK7vdqhpCi_9YpVOw_kAV6qWHx'].join('_');
+    const cleanEmail = email.trim().toLowerCase();
+    const { username: cleanUsername, displayName: cleanDisplayName } =
+      formatEmailToUsernameAndDisplayName(cleanEmail);
 
-    const supabaseUrl =
-      process.env.EXPO_PUBLIC_SUPABASE_URL || 'https://yhecwvbxhrpnzxxzsgbm.supabase.co';
+    const devPassword = `365Auth!${cleanUsername}`;
 
-    const adminClient = createClient(supabaseUrl, serviceKey);
-
-    const { data: linkData, error: linkErr } = await adminClient.auth.admin.generateLink({
-      type: 'magiclink',
-      email,
+    // 1. Standard client login using anon public key - zero browser security restrictions
+    let { data: sessionData, error: sessionErr } = await supabase.auth.signInWithPassword({
+      email: cleanEmail,
+      password: devPassword,
     });
 
-    if (linkErr) {
-      console.error('[AuthContext] generateLink error:', linkErr);
-      throw new Error(`Auth link error: ${linkErr.message}`);
-    }
+    // 2. If user doesn't exist or password needs initial sync, invoke local provision API
+    if (sessionErr) {
+      try {
+        const hostUri = Constants.expoConfig?.hostUri;
+        const hostIp = hostUri ? hostUri.split(':')[0] : null;
+        const provisionHost =
+          hostIp && hostIp !== 'localhost' && hostIp !== '127.0.0.1'
+            ? hostIp
+            : Platform.OS === 'android'
+            ? '10.0.2.2'
+            : 'localhost';
+        const provisionUrl = `http://${provisionHost}:3001/api/auth/provision`;
 
-    const hashedToken = linkData?.properties?.hashed_token;
-    if (!hashedToken) {
-      console.error('[AuthContext] No hashed token returned from Supabase:', linkData);
-      throw new Error('No verification token received from authentication server.');
+        const res = await fetch(provisionUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: cleanEmail }),
+        });
+        if (res.ok) {
+          const retryRes = await supabase.auth.signInWithPassword({
+            email: cleanEmail,
+            password: devPassword,
+          });
+          if (retryRes.data?.session) {
+            sessionData = retryRes.data;
+            sessionErr = null;
+          }
+        }
+      } catch (provisionErr) {
+        console.warn('[AuthContext] Auto-provision attempt:', provisionErr);
+      }
     }
-
-    const { data: sessionData, error: sessionErr } = await supabase.auth.verifyOtp({
-      token_hash: hashedToken,
-      type: 'magiclink',
-    });
 
     if (sessionErr) {
-      console.error('[AuthContext] verifyOtp error:', sessionErr);
-      throw new Error(`OTP verification failed: ${sessionErr.message}`);
+      console.error('[AuthContext] signInWithPassword error:', sessionErr);
+      throw new Error(`Sign in failed: ${sessionErr.message}`);
     }
 
     const authUser = sessionData?.user;
     if (!authUser) {
-      throw new Error('Could not establish user session with authentication server.');
+      throw new Error('Could not establish user session with Supabase.');
     }
 
     const userId = authUser.id;
-    const { username: cleanUsername, displayName: cleanDisplayName } =
-      formatEmailToUsernameAndDisplayName(email);
 
-    // Sync profile to database
-    try {
-      const { data: existingUser } = await adminClient
-        .from('users')
-        .select('*')
-        .eq('id', userId)
-        .maybeSingle();
-
-      if (!existingUser) {
-        await adminClient.from('users').insert({
-          id: userId,
-          email,
-          username: cleanUsername,
-          display_name: cleanDisplayName,
-          is_guest: false,
-          is_banned: false,
-          is_admin: false,
-          notification_prefs: { dailyRelease: true, songSelected: true },
-          push_tokens: [],
-          stats: { songs_featured: 0, listening_streak: 1, total_submissions: 0 },
-        });
-      } else if (
-        !existingUser.username ||
-        existingUser.username.startsWith('listener_') ||
-        existingUser.username === email
-      ) {
-        await adminClient
-          .from('users')
-          .update({
-            username: cleanUsername,
-            display_name:
-              existingUser.display_name && existingUser.display_name !== existingUser.username
-                ? existingUser.display_name
-                : cleanDisplayName,
-            is_guest: false,
-            updated_at: new Date().toISOString(),
-          })
-          .eq('id', userId);
-      }
-    } catch (dbErr) {
-      console.warn('[AuthContext] Profile sync warning (non-fatal):', dbErr);
-    }
-
-    // Attempt to load profile from DB or build fallback directly from auth session
-    let profile = await fetchSupabaseProfile(userId, email);
+    let profile = await fetchSupabaseProfile(userId, cleanEmail);
     if (!profile) {
       profile = {
         id: userId,
@@ -412,9 +353,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         avatar:
           authUser.user_metadata?.avatar_url ||
           authUser.user_metadata?.picture ||
-          (email.includes('kartikey')
+          (cleanEmail.includes('kartikey')
             ? 'https://lh3.googleusercontent.com/a/ACg8ocJStECLLVvUkPElTtjP_PWjg4YDxhHXtC1S1ccpUBcPp2gfkP1E=s96-c'
-            : email.includes('yss')
+            : cleanEmail.includes('yss')
             ? 'https://lh3.googleusercontent.com/a/ACg8ocIYwGGTBhG4HP6lo6YLKgFNC-r7D6YuvyWa27tWHu0qeeVtzjE9=s96-c'
             : null),
         isGuest: false,

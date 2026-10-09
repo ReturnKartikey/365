@@ -20,6 +20,7 @@ import {
 } from '@expo-google-fonts/inter';
 import { ThemeProvider, useTheme } from '../src/theme/ThemeContext';
 import { AuthProvider } from '../src/services/AuthContext';
+import { NotificationService } from '../src/services/NotificationService';
 
 class RootErrorBoundary extends Component<
   { children: React.ReactNode },
@@ -61,6 +62,10 @@ class RootErrorBoundary extends Component<
 
 function RootNav() {
   const { colors, isDark } = useTheme();
+
+  React.useEffect(() => {
+    NotificationService.initialize().catch(console.warn);
+  }, []);
 
   return (
     <>

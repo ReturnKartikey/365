@@ -482,6 +482,7 @@ BEGIN
     'date', v_target_date_str,
     'dayNumber', v_next_day_number,
     'song', v_selected_song,
+    'submitterId', v_submitter_id,
     'submitterUsername', v_submitter_username
   );
 END;

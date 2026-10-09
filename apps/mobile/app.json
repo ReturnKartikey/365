@@ -30,7 +30,15 @@
     "plugins": [
       "expo-router",
       "expo-audio",
-      "expo-video"
+      "expo-video",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/icon.png",
+          "color": "#E09F3E",
+          "defaultChannel": "daily-release"
+        }
+      ]
     ]
   }
 }

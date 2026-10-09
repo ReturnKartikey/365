@@ -13,10 +13,11 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { X, Moon, Bell, Shield, LogOut, Flag } from 'lucide-react-native';
+import { X, Moon, Bell, Shield, LogOut, Flag, Sparkles } from 'lucide-react-native';
 import { useTheme } from '../src/theme/ThemeContext';
 import { useAuth } from '../src/services/AuthContext';
 import { SongDataService } from '../src/services/SongDataService';
+import { NotificationService } from '../src/services/NotificationService';
 import { M3Button } from '../src/components/M3Button';
 import { M3Switch } from '../src/components/M3Switch';
 import { M3Toast } from '../src/components/M3Toast';
@@ -300,6 +301,67 @@ export default function SettingsScreen() {
               value={user?.notificationPrefs?.songSelected ?? true}
               onValueChange={handleToggleSongNotification}
             />
+          </View>
+
+          {/* Test Notification Buttons (Android Material You Heads-Up Preview) */}
+          <View style={{ marginTop: 8, gap: 8 }}>
+            <TouchableOpacity
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'center',
+                paddingVertical: 10,
+                paddingHorizontal: 14,
+                backgroundColor: colors.surfaceContainer,
+                borderRadius: shapes.medium,
+                borderWidth: 1,
+                borderColor: colors.outlineVariant,
+                gap: 8,
+              }}
+              onPress={() => NotificationService.triggerTestNotification('daily_release')}
+              activeOpacity={0.8}
+            >
+              <Sparkles size={16} color={colors.primary} />
+              <Text
+                style={{
+                  color: colors.primary,
+                  fontFamily: typography.labelLarge.fontFamilySans,
+                  fontWeight: '600',
+                  fontSize: 13,
+                }}
+              >
+                Test 7:00 PM Daily Drop Alert
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'center',
+                paddingVertical: 10,
+                paddingHorizontal: 14,
+                backgroundColor: colors.surfaceContainer,
+                borderRadius: shapes.medium,
+                borderWidth: 1,
+                borderColor: colors.outlineVariant,
+                gap: 8,
+              }}
+              onPress={() => NotificationService.triggerTestNotification('song_selected')}
+              activeOpacity={0.8}
+            >
+              <Bell size={16} color={colors.onSurface} />
+              <Text
+                style={{
+                  color: colors.onSurface,
+                  fontFamily: typography.labelLarge.fontFamilySans,
+                  fontWeight: '600',
+                  fontSize: 13,
+                }}
+              >
+                Test Submitter Song Selected Alert
+              </Text>
+            </TouchableOpacity>
           </View>
         </View>
 

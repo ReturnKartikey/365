@@ -8,6 +8,7 @@ import {
   CURATED_DAILY_SONGS,
 } from '@365/core';
 import { supabase, isSupabaseConfigured } from './supabase';
+import { PushDispatcher } from './pushDispatcher';
 
 export interface AdminStats {
   totalUsers: number;
@@ -413,11 +414,20 @@ export const AdminDataService = {
         // Refresh cached data
         await Promise.all([this.fetchStats(), this.fetchDailySongs()]);
 
+        // Dispatch push notifications to community listeners and submitter
+        if (data?.success && !data?.alreadyPublished && data?.song) {
+          PushDispatcher.dispatchDailyRelease({
+            dayNumber: data.dayNumber,
+            song: data.song,
+            submitterUsername: data.submitterUsername,
+          }).catch((err) => console.warn('[AdminDataService] Push dispatch error:', err));
+        }
+
         return {
           success: data?.success ?? true,
           alreadyPublished: data?.alreadyPublished ?? false,
           song: data?.song,
-          message: data?.message || 'Daily release executed successfully.',
+          message: data?.message || 'Daily release executed successfully with push notifications.',
         };
       } catch (e: any) {
         console.error('[AdminDataService] triggerManualRelease error:', e);

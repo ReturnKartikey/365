@@ -11,7 +11,8 @@
     "test": "npm run test --workspaces --if-present",
     "typecheck": "npm run typecheck --workspaces --if-present",
     "lint": "npm run lint --workspaces --if-present",
-    "build": "npm run build --workspaces --if-present"
+    "build": "npm run build --workspaces --if-present",
+    "release": "node scripts/triggerRelease.js"
   },
   "devDependencies": {
     "typescript": "^5.4.5"

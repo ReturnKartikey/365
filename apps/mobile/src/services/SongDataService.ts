@@ -1,3 +1,5 @@
+import { Platform } from 'react-native';
+import Constants from 'expo-constants';
 import type {
   DailySong,
   Song,
@@ -12,9 +14,9 @@ import {
 import { supabase, isSupabaseConfigured } from './supabase';
 import { AppStorage } from './storage';
 
-const spotifyProvider = new SpotifyProvider({
-  clientId: process.env.EXPO_PUBLIC_SPOTIFY_CLIENT_ID || process.env.SPOTIFY_CLIENT_ID,
-  clientSecret: process.env.EXPO_PUBLIC_SPOTIFY_CLIENT_SECRET || process.env.SPOTIFY_CLIENT_SECRET,
+// Offline/Fallback provider without client secret
+const fallbackSpotifyProvider = new SpotifyProvider({
+  clientId: process.env.EXPO_PUBLIC_SPOTIFY_CLIENT_ID,
   enableFallback: true,
 });
 
@@ -154,10 +156,37 @@ export const SongDataService = {
   },
 
   /**
-   * Search track catalog using Spotify Web API (with offline fallback)
+   * Search track catalog using secure server-side Spotify API proxy.
+   * Shields credentials and falls back gracefully to offline catalog.
    */
   async searchCatalog(query: string): Promise<Song[]> {
-    return spotifyProvider.searchTracks(query);
+    if (!query || !query.trim()) return [];
+
+    try {
+      const hostUri = Constants.expoConfig?.hostUri;
+      const hostIp = hostUri ? hostUri.split(':')[0] : null;
+      const apiHost =
+        hostIp && hostIp !== 'localhost' && hostIp !== '127.0.0.1'
+          ? hostIp
+          : Platform.OS === 'android'
+          ? '10.0.2.2'
+          : 'localhost';
+
+      const searchUrl = `http://${apiHost}:3001/api/spotify/search?q=${encodeURIComponent(query.trim())}`;
+      const res = await fetch(searchUrl);
+
+      if (res.ok) {
+        const json = await res.json();
+        if (Array.isArray(json?.tracks) && json.tracks.length > 0) {
+          return json.tracks;
+        }
+      }
+    } catch (err) {
+      console.warn('[SongDataService] Server Spotify search proxy unavailable, falling back:', err);
+    }
+
+    // Graceful offline fallback
+    return fallbackSpotifyProvider.searchTracks(query);
   },
 
   getActiveSubmissions(): Submission[] {
@@ -295,5 +324,72 @@ export const SongDataService = {
     };
     inMemoryReports.push(newReport);
     return { success: true, reportId: newReport.id };
+  },
+
+  /**
+   * Retrieves array of liked daily song IDs stored locally.
+   */
+  async getLikedSongIds(): Promise<string[]> {
+    try {
+      const stored = await AppStorage.getItem('365_liked_song_ids');
+      return stored ? JSON.parse(stored) : [];
+    } catch {
+      return [];
+    }
+  },
+
+  /**
+   * Returns true if a given song or daily release ID has been liked.
+   */
+  async isSongLiked(id: string): Promise<boolean> {
+    const list = await this.getLikedSongIds();
+    return list.includes(id);
+  },
+
+  /**
+   * Toggles like state for a daily song release.
+   */
+  async toggleLikeSong(dailyId: string): Promise<{ isLiked: boolean; newCount?: number }> {
+    let list = await this.getLikedSongIds();
+    let isNowLiked = false;
+
+    if (list.includes(dailyId)) {
+      list = list.filter((item) => item !== dailyId);
+      isNowLiked = false;
+    } else {
+      list.push(dailyId);
+      isNowLiked = true;
+    }
+
+    try {
+      await AppStorage.setItem('365_liked_song_ids', JSON.stringify(list));
+    } catch (e) {
+      console.warn('[SongDataService] Error saving liked song:', e);
+    }
+
+    // Best-effort like sync to Supabase daily_songs
+    if (isSupabaseConfigured) {
+      try {
+        const { data: current } = await supabase
+          .from('daily_songs')
+          .select('like_count')
+          .eq('id', dailyId)
+          .maybeSingle();
+
+        const curCount = current?.like_count || 0;
+        const newCount = Math.max(0, curCount + (isNowLiked ? 1 : -1));
+
+        await supabase
+          .from('daily_songs')
+          .update({ like_count: newCount })
+          .eq('id', dailyId);
+
+        return { isLiked: isNowLiked, newCount };
+      } catch (err) {
+        console.warn('[SongDataService] Like count sync error:', err);
+      }
+    }
+
+    return { isLiked: isNowLiked };
   },
 };

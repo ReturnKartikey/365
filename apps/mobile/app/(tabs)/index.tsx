@@ -35,6 +35,7 @@ export default function TodayScreen() {
     if (song?.song?.metadata?.palette?.dominant) {
       setSeedColor(song.song.metadata.palette.dominant);
     }
+    SongDataService.isSongLiked(song.id).then(setIsLiked);
 
     // 2. Background fetch live song from Supabase
     SongDataService.fetchLiveTodaySong().then((liveSong) => {
@@ -43,9 +44,15 @@ export default function TodayScreen() {
         if (liveSong.song?.metadata?.palette?.dominant) {
           setSeedColor(liveSong.song.metadata.palette.dominant);
         }
+        SongDataService.isSongLiked(liveSong.id).then(setIsLiked);
       }
     });
   }, [setSeedColor]);
+
+  const handleToggleLike = async () => {
+    const res = await SongDataService.toggleLikeSong(todayData.id);
+    setIsLiked(res.isLiked);
+  };
 
   const handleListen = async () => {
     const url =
@@ -135,7 +142,7 @@ export default function TodayScreen() {
           </View>
         )}
 
-        {/* Editorial Date Display with Settings Icon */}
+        {/* Editorial Date Display with Actions (Heart Like & Settings) */}
         <View style={styles.metaSection}>
           <Text
             style={[
@@ -149,20 +156,43 @@ export default function TodayScreen() {
             {monthDayDate}
           </Text>
 
-          <TouchableOpacity
-            onPress={() => router.push('/settings')}
-            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-            style={[styles.iconButton, { backgroundColor: colors.surfaceContainerHigh }]}
-          >
-            <Settings size={18} color={colors.onSurface} />
-          </TouchableOpacity>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <TouchableOpacity
+              onPress={handleToggleLike}
+              hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+              style={[
+                styles.iconButton,
+                {
+                  backgroundColor: isLiked ? '#FF3B3020' : colors.surfaceContainerHigh,
+                  borderColor: isLiked ? '#FF3B3060' : 'transparent',
+                  borderWidth: isLiked ? 1 : 0,
+                },
+              ]}
+              accessibilityLabel={isLiked ? "Unlike song" : "Like song"}
+            >
+              <Heart
+                size={18}
+                color={isLiked ? '#FF3B30' : colors.onSurface}
+                fill={isLiked ? '#FF3B30' : 'none'}
+              />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={() => router.push('/settings')}
+              hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+              style={[styles.iconButton, { backgroundColor: colors.surfaceContainerHigh }]}
+              accessibilityLabel="Open settings"
+            >
+              <Settings size={18} color={colors.onSurface} />
+            </TouchableOpacity>
+          </View>
         </View>
 
         {/* Hero Album Artwork with Reveal Animation and Double-Tap Like */}
         <AlbumArtHero
           artworkUrl={todayData.song.artworkUrl}
           isNewRelease={isNewRelease}
-          onLike={() => setIsLiked(true)}
+          onLike={handleToggleLike}
         />
 
         {/* Song & Artist Information */}

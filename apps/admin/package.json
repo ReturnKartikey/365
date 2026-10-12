@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@365/core": "*",
+    "@supabase/ssr": "^0.12.7",
     "@supabase/supabase-js": "^2.45.0",
     "clsx": "^2.1.1",
     "lucide-react": "^0.378.0",

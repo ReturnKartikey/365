@@ -84,17 +84,30 @@ export default function WelcomeScreen() {
     return () => sub.remove();
   }, []);
 
-  const handleGoogleSignInPress = () => {
-    setShowAccountChooser(true);
+  const handleGoogleSignInPress = async () => {
+    try {
+      setLoadingGoogle(true);
+      setAuthError(null);
+      await signInWithGoogle();
+    } catch (e: any) {
+      console.warn('Google sign-in error:', e);
+      // If browser OAuth fails or cancelled, open chooser
+      setShowAccountChooser(true);
+    } finally {
+      setLoadingGoogle(false);
+    }
   };
 
   const handleBrowserOAuth = async () => {
     setShowAccountChooser(false);
     try {
       setLoadingGoogle(true);
+      setAuthError(null);
       await signInWithGoogle();
     } catch (e: any) {
       console.warn('Google sign-in error:', e);
+      setAuthError(e?.message || 'Google sign-in failed');
+    } finally {
       setLoadingGoogle(false);
     }
   };
@@ -218,6 +231,15 @@ export default function WelcomeScreen() {
             textStyle={{ color: colors.onSurface }}
           />
 
+          <TouchableOpacity
+            onPress={() => setShowAccountChooser(true)}
+            style={{ marginTop: 10, paddingVertical: 4 }}
+            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+          >
+            <Text style={{ fontSize: 12, color: colors.onSurfaceVariant, textAlign: 'center', opacity: 0.6 }}>
+              Developer mode: switch demo personas
+            </Text>
+          </TouchableOpacity>
         </View>
 
         {/* 4. Google Account Chooser Modal (Direct Supabase Auth Bridge) */}

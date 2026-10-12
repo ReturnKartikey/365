@@ -181,7 +181,7 @@ The core ritual: every day at **7:00 PM IST**, one song is published for the ent
 
 3. **CLI (Manual)** — For testing or emergency releases:
    ```bash
-   npm run release --workspace=@365/backend
+   npm run release
    ```
 
 ### How It Works

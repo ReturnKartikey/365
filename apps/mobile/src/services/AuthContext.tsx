@@ -313,7 +313,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
         const res = await fetch(provisionUrl, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            'Content-Type': 'application/json',
+            'x-admin-secret': '365_admin_internal_sec_2026',
+          },
           body: JSON.stringify({ email: cleanEmail }),
         });
         if (res.ok) {

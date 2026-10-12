@@ -7,7 +7,7 @@ class ResilientAudioService {
   private activePlayer: any = null;
   private subscriptions: any[] = [];
   private webAudio: any = null;
-  private driver: 'expo-video' | 'expo-audio' | 'web' | 'none' = 'none';
+  private driver: 'expo-av' | 'expo-audio' | 'expo-video' | 'web' | 'none' = 'none';
 
   constructor() {
     this.detectDriver();
@@ -20,7 +20,21 @@ class ResilientAudioService {
       return;
     }
 
-    // 2. expo-audio (development build / custom client)
+    // 2. expo-av (First-class support in standard Expo Go & native Android/iOS APK)
+    try {
+      const { Audio } = require('expo-av');
+      if (Audio && Audio.Sound) {
+        this.driver = 'expo-av';
+        Audio.setAudioModeAsync({
+          playsInSilentModeIOS: true,
+          staysActiveInBackground: false,
+          shouldDuckAndroid: true,
+        }).catch(() => {});
+        return;
+      }
+    } catch (e) {}
+
+    // 3. expo-audio (development build / custom client)
     try {
       const ea = require('expo-audio');
       if (ea && typeof ea.createAudioPlayer === 'function') {
@@ -29,7 +43,7 @@ class ResilientAudioService {
       }
     } catch (e) {}
 
-    // 3. expo-video (development build / custom client)
+    // 4. expo-video (fallback native driver)
     try {
       const ev = require('expo-video');
       if (ev && typeof ev.createVideoPlayer === 'function') {
@@ -62,6 +76,11 @@ class ResilientAudioService {
           onPlaybackStatus?.({ isPlaying: true, didJustFinish: false });
           return true;
         }
+        if (this.driver === 'expo-av' && this.activePlayer) {
+          await this.activePlayer.playAsync();
+          onPlaybackStatus?.({ isPlaying: true, didJustFinish: false });
+          return true;
+        }
         if (this.driver === 'expo-audio' && this.activePlayer && typeof this.activePlayer.play === 'function') {
           this.activePlayer.play();
           onPlaybackStatus?.({ isPlaying: true, didJustFinish: false });
@@ -91,7 +110,29 @@ class ResilientAudioService {
         return true;
       }
 
-      // 2. expo-audio
+      // 2. expo-av (Standard physical sound in Expo Go Android/iOS)
+      if (this.driver === 'expo-av') {
+        const { Audio } = require('expo-av');
+        const { sound } = await Audio.Sound.createAsync(
+          { uri },
+          { shouldPlay: true },
+          (status: any) => {
+            if (status.isLoaded) {
+              if (status.didJustFinish) {
+                onPlaybackStatus?.({ isPlaying: false, didJustFinish: true });
+                this.stop();
+              } else {
+                onPlaybackStatus?.({ isPlaying: status.isPlaying, didJustFinish: false });
+              }
+            }
+          }
+        );
+        this.activePlayer = sound;
+        onPlaybackStatus?.({ isPlaying: true, didJustFinish: false });
+        return true;
+      }
+
+      // 3. expo-audio
       if (this.driver === 'expo-audio') {
         const ea = require('expo-audio');
         const player = ea.createAudioPlayer(uri);
@@ -103,7 +144,7 @@ class ResilientAudioService {
         return true;
       }
 
-      // 3. expo-video
+      // 4. expo-video
       if (this.driver === 'expo-video') {
         const ev = require('expo-video');
         const player = ev.createVideoPlayer(uri);
@@ -133,8 +174,7 @@ class ResilientAudioService {
         return true;
       }
 
-      // Fallback: In standard Expo Go client where native audio modules are omitted,
-      // report active status so visual waveforms and progress counters still animate.
+      // Fallback
       onPlaybackStatus?.({ isPlaying: true, didJustFinish: false });
       return true;
     } catch (e) {
@@ -150,6 +190,8 @@ class ResilientAudioService {
     try {
       if (this.driver === 'web' && this.webAudio) {
         this.webAudio.pause();
+      } else if (this.driver === 'expo-av' && this.activePlayer) {
+        await this.activePlayer.pauseAsync();
       } else if (this.activePlayer && typeof this.activePlayer.pause === 'function') {
         this.activePlayer.pause();
       }
@@ -166,7 +208,12 @@ class ResilientAudioService {
         this.webAudio = null;
       }
       if (this.activePlayer) {
-        if (typeof this.activePlayer.pause === 'function') {
+        if (this.driver === 'expo-av') {
+          try {
+            await this.activePlayer.stopAsync();
+            await this.activePlayer.unloadAsync();
+          } catch {}
+        } else if (typeof this.activePlayer.pause === 'function') {
           this.activePlayer.pause();
         }
         this.subscriptions.forEach((sub) => {

@@ -325,18 +325,18 @@ export const AdminDataService = {
       sub.rejectionReason = reason || 'Removed by moderator';
     }
 
-    if (isSupabaseConfigured) {
-      try {
-        await supabase
-          .from('submissions')
-          .update({
-            status: 'removed',
-            rejection_reason: reason || 'Removed by moderator',
-          })
-          .eq('id', submissionId);
-      } catch (e) {
-        console.warn('[AdminDataService] removeSubmission error:', e);
-      }
+    try {
+      await fetch('/api/admin/mutate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'remove_submission',
+          submissionId,
+          reason,
+        }),
+      });
+    } catch (e) {
+      console.warn('[AdminDataService] removeSubmission error:', e);
     }
   },
 
@@ -347,40 +347,34 @@ export const AdminDataService = {
       rep.notes = notes;
     }
 
-    if (isSupabaseConfigured) {
-      try {
-        await supabase
-          .from('reports')
-          .update({
-            status: action,
-            notes: notes || null,
-          })
-          .eq('id', reportId);
-      } catch (e) {
-        console.warn('[AdminDataService] resolveReport error:', e);
-      }
+    try {
+      await fetch('/api/admin/mutate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'resolve_report',
+          reportId,
+          status: action,
+          notes,
+        }),
+      });
+    } catch (e) {
+      console.warn('[AdminDataService] resolveReport error:', e);
     }
   },
 
   async banUser(userId: string): Promise<void> {
-    if (isSupabaseConfigured) {
-      try {
-        await supabase
-          .from('users')
-          .update({ is_banned: true })
-          .eq('id', userId);
-
-        await supabase
-          .from('submissions')
-          .update({
-            status: 'rejected',
-            rejection_reason: 'User account suspended for policy violation',
-          })
-          .eq('user_id', userId)
-          .eq('status', 'queued');
-      } catch (e) {
-        console.warn('[AdminDataService] banUser error:', e);
-      }
+    try {
+      await fetch('/api/admin/mutate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'ban_user',
+          userId,
+        }),
+      });
+    } catch (e) {
+      console.warn('[AdminDataService] banUser error:', e);
     }
 
     cachedSubmissions.forEach((sub) => {

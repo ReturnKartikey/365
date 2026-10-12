@@ -1,22 +1,5 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
-
-const supabaseUrl =
-  process.env.NEXT_PUBLIC_SUPABASE_URL ||
-  process.env.SUPABASE_URL ||
-  'https://yhecwvbxhrpnzxxzsgbm.supabase.co';
-
-const serviceKey =
-  process.env.SUPABASE_SERVICE_ROLE_KEY ||
-  process.env.NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY ||
-  '';
-
-const adminClient = createClient(supabaseUrl, serviceKey, {
-  auth: {
-    persistSession: false,
-    autoRefreshToken: false,
-  },
-});
+import { getAdminServiceClient } from '../../../../lib/supabase';
 
 export async function OPTIONS() {
   return new NextResponse(null, {
@@ -24,13 +7,31 @@ export async function OPTIONS() {
     headers: {
       'Access-Control-Allow-Origin': '*',
       'Access-Control-Allow-Methods': 'POST, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization, x-admin-secret',
     },
   });
 }
 
+/**
+ * Secure Provisioning Endpoint (Dev & Seeding Only)
+ * Protected by strict x-admin-secret header to prevent arbitrary account hijacking.
+ */
 export async function POST(req: Request) {
   try {
+    const secretHeader = req.headers.get('x-admin-secret');
+    const expectedSecret = process.env.ADMIN_PROVISION_SECRET || '365_admin_internal_sec_2026';
+
+    // Gate with shared secret
+    if (!secretHeader || secretHeader !== expectedSecret) {
+      return NextResponse.json(
+        { error: 'Unauthorized: Missing or invalid x-admin-secret header.' },
+        {
+          status: 401,
+          headers: { 'Access-Control-Allow-Origin': '*' },
+        }
+      );
+    }
+
     const body = await req.json();
     const email = body?.email;
     if (!email || typeof email !== 'string' || !email.includes('@')) {
@@ -43,6 +44,7 @@ export async function POST(req: Request) {
       );
     }
 
+    const adminClient = getAdminServiceClient();
     const cleanEmail = email.trim().toLowerCase();
     const local = (cleanEmail.split('@')[0] || 'listener').trim().toLowerCase();
     let nameWithoutTrailingNumbers = local.replace(/\d+$/, '');
@@ -59,7 +61,7 @@ export async function POST(req: Request) {
     const cleanDisplayName = parts.filter(Boolean).map(p => p.charAt(0).toUpperCase() + p.slice(1)).join(' ') ||
       cleanUsername.charAt(0).toUpperCase() + cleanUsername.slice(1);
 
-    const password = `365Auth!${cleanUsername}`;
+    const devPassword = `365Auth!${cleanUsername}`;
 
     // 1. Check if user already exists
     const { data: listData } = await adminClient.auth.admin.listUsers();
@@ -68,16 +70,18 @@ export async function POST(req: Request) {
     let userId: string;
     if (existing) {
       userId = existing.id;
-      // Update password and ensure verified
-      await adminClient.auth.admin.updateUserById(userId, {
-        password,
-        email_confirm: true,
-      });
+      // Do NOT overwrite existing user's password unless explicitly requested by authorized dev script
+      if (body?.forceResetPassword) {
+        await adminClient.auth.admin.updateUserById(userId, {
+          password: devPassword,
+          email_confirm: true,
+        });
+      }
     } else {
-      // Create user with verified email
+      // Create new user with confirmed email
       const { data: created, error: createErr } = await adminClient.auth.admin.createUser({
         email: cleanEmail,
-        password,
+        password: devPassword,
         email_confirm: true,
         user_metadata: {
           display_name: cleanDisplayName,
@@ -130,22 +134,27 @@ export async function POST(req: Request) {
     }
 
     return NextResponse.json(
-      { success: true, userId, username: cleanUsername, displayName: cleanDisplayName },
       {
-        headers: {
-          'Access-Control-Allow-Origin': '*',
+        success: true,
+        user: {
+          id: userId,
+          email: cleanEmail,
+          username: cleanUsername,
+          displayName: cleanDisplayName,
         },
+        devPassword,
+      },
+      {
+        status: 200,
+        headers: { 'Access-Control-Allow-Origin': '*' },
       }
     );
   } catch (err: any) {
-    console.error('[API Provision Error]', err);
     return NextResponse.json(
-      { error: err.message || 'Provisioning failed' },
+      { error: err?.message || 'Internal provisioning failure' },
       {
         status: 500,
-        headers: {
-          'Access-Control-Allow-Origin': '*',
-        },
+        headers: { 'Access-Control-Allow-Origin': '*' },
       }
     );
   }

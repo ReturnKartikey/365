@@ -1,4 +1,4 @@
-import { supabase, isSupabaseConfigured } from './supabase';
+import { getAdminServiceClient, isSupabaseConfigured } from './supabase';
 
 export interface DailyReleasePushParams {
   dayNumber: number;
@@ -49,8 +49,10 @@ export const PushDispatcher = {
     }
 
     try {
+      const adminClient = getAdminServiceClient();
+
       // 1. Fetch all users eligible for daily release notifications
-      const { data: users, error: usersErr } = await supabase
+      const { data: users, error: usersErr } = await adminClient
         .from('users')
         .select('id, push_tokens, notification_prefs');
 

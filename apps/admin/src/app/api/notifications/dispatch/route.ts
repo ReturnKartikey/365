@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { supabase } from '../../../../lib/supabase';
+import { getAdminServiceClient, isSupabaseConfigured } from '../../../../lib/supabase';
 import { PushDispatcher } from '../../../../lib/pushDispatcher';
 
 export async function OPTIONS() {
@@ -27,9 +27,10 @@ export async function POST(req: Request) {
     }
 
     const targetDate = body?.targetDate || null;
+    const adminClient = getAdminServiceClient();
 
     // 1. Execute atomic daily release stored procedure
-    const { data: releaseData, error: releaseErr } = await supabase.rpc(
+    const { data: releaseData, error: releaseErr } = await adminClient.rpc(
       'execute_daily_release',
       { p_target_date: targetDate }
     );

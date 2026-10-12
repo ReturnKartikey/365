@@ -122,14 +122,30 @@ CREATE POLICY "Public read config"
   ON public.config FOR SELECT
   USING (true);
 
--- 3.3 users RLS: Public can view basic profile info; private fields secured
-CREATE POLICY "Public read user profiles"
+-- 3.3 users RLS: Private data secured (users can only read their own row, admins can view all)
+CREATE POLICY "Users read own profile or admin reads all"
   ON public.users FOR SELECT
-  USING (true);
+  USING (
+    auth.uid() = id 
+    OR EXISTS (SELECT 1 FROM public.users WHERE id = auth.uid() AND is_admin = true)
+  );
 
 CREATE POLICY "Users can update their own profile"
   ON public.users FOR UPDATE
   USING (auth.uid() = id);
+
+-- 3.3b Public Profiles View: Sanitized public view excluding emails, push tokens, and banned status
+CREATE OR REPLACE VIEW public.profiles WITH (security_invoker = false) AS
+  SELECT
+    id,
+    username,
+    display_name,
+    avatar_url,
+    stats,
+    created_at
+  FROM public.users;
+
+GRANT SELECT ON public.profiles TO anon, authenticated;
 
 -- 3.4 submissions RLS: Users can view their own submissions; admins can view all
 CREATE POLICY "Users can view own submissions"

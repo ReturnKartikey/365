@@ -14,14 +14,33 @@ import { X, Share2 } from 'lucide-react-native';
 import { useTheme } from '../../src/theme/ThemeContext';
 import { SongDataService } from '../../src/services/SongDataService';
 import { M3Button } from '../../src/components/M3Button';
+import type { DailySong } from '@365/core';
 
 export default function ShareCardScreen() {
   const { dayNumber } = useLocalSearchParams<{ dayNumber: string }>();
   const { colors, typography, shapes } = useTheme();
   const router = useRouter();
 
-  const num = parseInt(dayNumber || '47', 10);
-  const songData = SongDataService.getDaySong(num) || SongDataService.getTodaySong();
+  const num = parseInt(dayNumber || '', 10);
+  const [songData, setSongData] = React.useState<DailySong>(
+    (!isNaN(num) ? SongDataService.getDaySong(num) : null) || SongDataService.getTodaySong()
+  );
+
+  React.useEffect(() => {
+    if (!isNaN(num) && songData.dayNumber !== num) {
+      const cached = SongDataService.getDaySong(num);
+      if (cached) {
+        setSongData(cached);
+      } else {
+        SongDataService.fetchLiveHistory().then((history) => {
+          const found = history.find((s) => s.dayNumber === num);
+          if (found) {
+            setSongData(found);
+          }
+        });
+      }
+    }
+  }, [num, songData.dayNumber]);
 
   const handleShare = async () => {
     try {

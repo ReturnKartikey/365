@@ -1,7 +1,7 @@
 import 'react-native-gesture-handler';
 import React, { Component, ErrorInfo } from 'react';
 import { View, Text, ActivityIndicator, TouchableOpacity } from 'react-native';
-import { Stack } from 'expo-router';
+import { Stack, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -62,10 +62,29 @@ class RootErrorBoundary extends Component<
 
 function RootNav() {
   const { colors, isDark } = useTheme();
+  const router = useRouter();
 
   React.useEffect(() => {
     NotificationService.initialize().catch(console.warn);
-  }, []);
+
+    // Deep link navigation on notification tap
+    try {
+      const Notifications = require('expo-notifications');
+      const subscription = Notifications.addNotificationResponseReceivedListener?.((response: any) => {
+        const data = response?.notification?.request?.content?.data;
+        if (data?.dayNumber) {
+          router.push(`/share/${data.dayNumber}`);
+        } else if (data?.type === 'daily_release') {
+          router.push('/');
+        }
+      });
+      return () => {
+        subscription?.remove?.();
+      };
+    } catch (e) {
+      // web fallback
+    }
+  }, [router]);
 
   return (
     <>
@@ -94,6 +113,12 @@ function RootNav() {
             presentation: 'modal',
             headerShown: false,
             animation: 'slide_from_bottom',
+          }}
+        />
+        <Stack.Screen
+          name="day/[dayNumber]"
+          options={{
+            headerShown: false,
           }}
         />
       </Stack>

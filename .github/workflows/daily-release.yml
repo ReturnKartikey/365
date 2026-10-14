@@ -9,31 +9,25 @@ on:
 
 jobs:
   execute-release:
-    name: Execute 7:00 PM IST Daily Release
+    name: Execute 7:00 PM IST Daily Release & Push Dispatch
     runs-on: ubuntu-latest
     steps:
-      - name: Trigger Supabase execute_daily_release RPC
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Execute Daily Release & Push Notifications
+        env:
+          SUPABASE_URL: ${{ secrets.EXPO_PUBLIC_SUPABASE_URL || secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.EXPO_PUBLIC_SUPABASE_ANON_KEY || secrets.SUPABASE_ANON_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: |
-          if [ -z "${{ secrets.EXPO_PUBLIC_SUPABASE_URL }}" ] || [ -z "${{ secrets.EXPO_PUBLIC_SUPABASE_ANON_KEY }}" ]; then
-            echo "Supabase secrets not configured. Please add EXPO_PUBLIC_SUPABASE_URL and EXPO_PUBLIC_SUPABASE_ANON_KEY to Repository Secrets."
+          if [ -z "$SUPABASE_URL" ] || [ -z "$SUPABASE_ANON_KEY" ]; then
+            echo "Supabase secrets not configured. Please add SUPABASE_URL (or EXPO_PUBLIC_SUPABASE_URL) and SUPABASE_ANON_KEY to Repository Secrets."
             exit 1
           fi
-
-          RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "${{ secrets.EXPO_PUBLIC_SUPABASE_URL }}/rest/v1/rpc/execute_daily_release" \
-            -H "apikey: ${{ secrets.EXPO_PUBLIC_SUPABASE_ANON_KEY }}" \
-            -H "Authorization: Bearer ${{ secrets.EXPO_PUBLIC_SUPABASE_ANON_KEY }}" \
-            -H "Content-Type: application/json" \
-            -d '{}')
-
-          HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
-          BODY=$(echo "$RESPONSE" | sed '$d')
-
-          echo "Response HTTP Code: $HTTP_CODE"
-          echo "Response Body: $BODY"
-
-          if [ "$HTTP_CODE" -ge 200 ] && [ "$HTTP_CODE" -lt 300 ]; then
-            echo "Daily release executed successfully!"
-          else
-            echo "Daily release returned an error: $BODY"
-            exit 1
-          fi
+          node scripts/triggerRelease.js

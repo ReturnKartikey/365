@@ -161,8 +161,24 @@ export const NotificationService = {
         Constants.appOwnership === 'expo' ||
         Constants.executionEnvironment === ExecutionEnvironment.StoreClient;
 
-      // In Expo Go or development, use clean identifier token
-      const token = `ExponentPushToken[expo_${Platform.OS}_${userId ? userId.substring(0, 8) : 'device'}_${Date.now().toString(36)}]`;
+      // Default identifier token
+      let token = `ExponentPushToken[expo_${Platform.OS}_${userId ? userId.substring(0, 8) : 'device'}_${Date.now().toString(36)}]`;
+
+      // In standalone APK on physical device, attempt real Expo Push Token
+      if (!isExpoGo && Platform.OS !== 'web') {
+        try {
+          const Notifications = require('expo-notifications');
+          const projectId = Constants.expoConfig?.extra?.eas?.projectId;
+          const pushTokenData = await Notifications.getExpoPushTokenAsync(
+            projectId ? { projectId } : undefined
+          );
+          if (pushTokenData?.data) {
+            token = pushTokenData.data;
+          }
+        } catch (realTokenErr) {
+          console.info('[NotificationService] Using device token identifier:', realTokenErr);
+        }
+      }
 
       await AppStorage.setItem(PUSH_TOKEN_STORAGE_KEY, token);
 

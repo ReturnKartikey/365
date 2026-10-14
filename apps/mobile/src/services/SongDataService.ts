@@ -79,7 +79,13 @@ export const SongDataService = {
             status: data.status,
           };
 
-          inMemoryDailySongs[0] = liveSong;
+          if (inMemoryDailySongs.length > 0 && inMemoryDailySongs[0].id !== liveSong.id) {
+            const existingIdx = inMemoryDailySongs.findIndex((s) => s.id === liveSong.id);
+            if (existingIdx > 0) inMemoryDailySongs.splice(existingIdx, 1);
+            inMemoryDailySongs.unshift(liveSong);
+          } else {
+            inMemoryDailySongs[0] = liveSong;
+          }
           saveLocalCache(CACHE_KEY_TODAY, liveSong);
           return liveSong;
         }

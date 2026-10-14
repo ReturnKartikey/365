@@ -22,7 +22,6 @@ export interface ExpoPushMessage {
   sound?: 'default' | null;
   channelId?: string;
   priority?: 'default' | 'normal' | 'high';
-  color?: string;
   badge?: number;
 }
 
@@ -98,7 +97,6 @@ export const PushDispatcher = {
           sound: 'default',
           channelId: 'song-selected',
           priority: 'high',
-          color: '#E09F3E',
           badge: 1,
           data: {
             type: 'song_selected',
@@ -129,7 +127,6 @@ export const PushDispatcher = {
           sound: 'default',
           channelId: 'daily-release',
           priority: 'high',
-          color: '#E09F3E',
           badge: 1,
           data: {
             type: 'daily_release',

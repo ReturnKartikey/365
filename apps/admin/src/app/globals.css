@@ -1,42 +1,119 @@
-@import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400..700;1,9..144,400..700&family=Inter:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..800;1,9..144,300..800&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 :root {
-  --background: #0F1115;
-  --surface: #181A20;
-  --surface-elevated: #22252D;
-  --primary: #C67D5A;
+  --background: #121316;
+  --surface: #191816;
+  --surface-container: #201F1C;
+  --surface-elevated: #282622;
+  --primary: #D87D4A;
+  --accent: #E09F3E;
+  --border: #332F2A;
 }
 
 body {
-  color: #E2E4E9;
+  color: #EDE6DE;
   background-color: var(--background);
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   -webkit-font-smoothing: antialiased;
+  background-image: 
+    radial-gradient(ellipse 80% 50% at 50% -20%, rgba(216, 125, 74, 0.04), transparent),
+    radial-gradient(circle 400px at 100% 100%, rgba(224, 159, 62, 0.02), transparent);
+  background-attachment: fixed;
 }
 
-h1, h2, h3, .font-serif {
+h1, h2, h3, h4, .font-serif {
   font-family: 'Fraunces', Georgia, serif;
+  font-feature-settings: "cv02", "cv03", "cv04", "cv11";
 }
 
-/* Custom minimal scrollbar */
+/* Vinyl groove concentric texture */
+.vinyl-grooves {
+  background: repeating-radial-gradient(
+    circle at center,
+    rgba(255, 255, 255, 0.015) 0px,
+    rgba(255, 255, 255, 0.015) 1px,
+    transparent 1px,
+    transparent 4px
+  );
+}
+
+/* Subtle amber analog glow */
+.amber-glow {
+  box-shadow: 0 0 35px -8px rgba(224, 159, 62, 0.18);
+}
+
+.terracotta-glow {
+  box-shadow: 0 0 40px -10px rgba(216, 125, 74, 0.22);
+}
+
+/* Custom editorial scrollbar */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
 }
 
 ::-webkit-scrollbar-track {
-  background: #181A20;
+  background: #191816;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #2C303B;
-  border-radius: 3px;
+  background: #332F2A;
+  border-radius: 9999px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #C67D5A;
+  background: #D87D4A;
 }
+
+/* Vinyl realistic bowtie reflection sheen */
+.vinyl-reflection {
+  background: conic-gradient(
+    from 0deg,
+    rgba(255, 255, 255, 0.08) 0deg,
+    transparent 55deg,
+    rgba(255, 255, 255, 0.08) 120deg,
+    transparent 175deg,
+    rgba(255, 255, 255, 0.08) 240deg,
+    transparent 295deg,
+    rgba(255, 255, 255, 0.08) 360deg
+  );
+}
+
+@keyframes vinyl-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.animate-vinyl-spin {
+  animation: vinyl-spin 5.5s linear infinite;
+}
+
+@keyframes eq-bounce-1 {
+  0%, 100% { height: 4px; }
+  50% { height: 18px; }
+}
+@keyframes eq-bounce-2 {
+  0%, 100% { height: 16px; }
+  50% { height: 6px; }
+}
+@keyframes eq-bounce-3 {
+  0%, 100% { height: 8px; }
+  50% { height: 22px; }
+}
+@keyframes eq-bounce-4 {
+  0%, 100% { height: 20px; }
+  50% { height: 10px; }
+}
+
+.animate-eq-1 { animation: eq-bounce-1 0.7s ease-in-out infinite; }
+.animate-eq-2 { animation: eq-bounce-2 0.55s ease-in-out infinite; }
+.animate-eq-3 { animation: eq-bounce-3 0.8s ease-in-out infinite; }
+.animate-eq-4 { animation: eq-bounce-4 0.65s ease-in-out infinite; }

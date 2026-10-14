@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { supabase } from '../lib/supabase';
-import { LogOut, ShieldCheck, User } from 'lucide-react';
+import { LogOut, Disc, Sparkles, Clock, Music2, Calendar, ShieldCheck, Flag, Sliders } from 'lucide-react';
 
 export function AdminHeader() {
   const pathname = usePathname();
@@ -12,6 +12,26 @@ export function AdminHeader() {
   const isLoginPage = pathname === '/login';
 
   const [userEmail, setUserEmail] = useState<string | null>(null);
+  const [istTime, setIstTime] = useState<string>('');
+
+  // Live IST Clock
+  useEffect(() => {
+    const updateTime = () => {
+      const now = new Date();
+      const options: Intl.DateTimeFormatOptions = {
+        timeZone: 'Asia/Kolkata',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: false,
+      };
+      setIstTime(new Intl.DateTimeFormat('en-GB', options).format(now));
+    };
+
+    updateTime();
+    const interval = setInterval(updateTime, 1000);
+    return () => clearInterval(interval);
+  }, []);
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
@@ -33,97 +53,91 @@ export function AdminHeader() {
     router.push('/login');
   };
 
+  const navItems = [
+    { href: '/', label: 'Studio Deck', icon: Disc },
+    { href: '/queue', label: 'Audition Crate', icon: Music2 },
+    { href: '/schedule', label: 'Schedule', icon: Calendar },
+    { href: '/reports', label: 'Moderation', icon: Flag },
+    { href: '/config', label: 'Config', icon: Sliders },
+  ];
+
   return (
-    <header className="border-b border-border bg-surface/90 backdrop-blur sticky top-0 z-50">
-      <div className="max-w-7xl mx-auto px-6 h-18 flex items-center justify-between">
+    <header className="border-b border-border/80 bg-background/95 backdrop-blur-md sticky top-0 z-50 transition-colors">
+      <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
         <div className="flex items-center space-x-8">
-          <Link href="/" className="flex items-baseline space-x-3">
-            <span className="font-serif text-3xl font-bold tracking-tight text-primary">365</span>
-            <span className="text-xs uppercase tracking-widest text-muted font-medium">Curation Desk</span>
+          {/* Masthead Logo */}
+          <Link href="/" className="group flex items-baseline space-x-3 focus:outline-none">
+            <span className="font-serif text-3xl font-bold tracking-tight text-primary transition group-hover:text-primary-hover">
+              365
+            </span>
+            <span className="text-[10px] font-mono uppercase tracking-[0.2em] text-amber border border-amber/30 bg-amber/10 px-2.5 py-0.5 rounded-full font-semibold">
+              Curator Desk
+            </span>
           </Link>
 
-          {/* Navigation Links — Only shown when authenticated */}
+          {/* Navigation Links — Audiophile Tab Bar */}
           {!isLoginPage && (
-            <nav className="hidden md:flex space-x-1">
-              <Link
-                href="/"
-                className={`px-3.5 py-2 text-sm font-medium rounded-md transition ${
-                  pathname === '/'
-                    ? 'text-white bg-surface-elevated'
-                    : 'text-gray-300 hover:text-white hover:bg-surface-elevated'
-                }`}
-              >
-                Overview
-              </Link>
-              <Link
-                href="/schedule"
-                className={`px-3.5 py-2 text-sm font-medium rounded-md transition ${
-                  pathname === '/schedule'
-                    ? 'text-white bg-surface-elevated'
-                    : 'text-gray-300 hover:text-white hover:bg-surface-elevated'
-                }`}
-              >
-                Calendar & Select
-              </Link>
-              <Link
-                href="/queue"
-                className={`px-3.5 py-2 text-sm font-medium rounded-md transition ${
-                  pathname === '/queue'
-                    ? 'text-white bg-surface-elevated'
-                    : 'text-gray-300 hover:text-white hover:bg-surface-elevated'
-                }`}
-              >
-                Queue
-              </Link>
-              <Link
-                href="/reports"
-                className={`px-3.5 py-2 text-sm font-medium rounded-md transition ${
-                  pathname === '/reports'
-                    ? 'text-white bg-surface-elevated'
-                    : 'text-gray-300 hover:text-white hover:bg-surface-elevated'
-                }`}
-              >
-                Reports
-              </Link>
-              <Link
-                href="/config"
-                className={`px-3.5 py-2 text-sm font-medium rounded-md transition ${
-                  pathname === '/config'
-                    ? 'text-white bg-surface-elevated'
-                    : 'text-gray-300 hover:text-white hover:bg-surface-elevated'
-                }`}
-              >
-                Release Config
-              </Link>
+            <nav className="hidden lg:flex items-center space-x-1 p-1 bg-surface-container rounded-full border border-border">
+              {navItems.map((item) => {
+                const Icon = item.icon;
+                const isActive = pathname === item.href;
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    className={`inline-flex items-center px-4 py-1.5 rounded-full text-xs tracking-wide transition whitespace-nowrap ${
+                      isActive
+                        ? 'bg-surface-elevated text-cream font-semibold shadow-sm border border-border/80'
+                        : 'text-muted hover:text-cream hover:bg-surface-elevated/40 font-medium'
+                    }`}
+                  >
+                    <Icon className={`w-3.5 h-3.5 mr-2 ${isActive ? 'text-primary' : 'text-muted'}`} />
+                    {item.label}
+                  </Link>
+                );
+              })}
             </nav>
           )}
         </div>
 
-        {/* Right side actions */}
-        <div className="flex items-center space-x-3">
+        {/* Right Station Status & Admin Badge */}
+        <div className="flex items-center space-x-4">
+          {/* Live IST Analog Engine Clock */}
+          {!isLoginPage && istTime && (
+            <div className="hidden sm:flex items-center space-x-2 px-3.5 py-1.5 rounded-full bg-surface-container border border-border text-xs font-mono whitespace-nowrap shrink-0">
+              <span className="w-2 h-2 rounded-full bg-amber animate-pulse shrink-0" />
+              <span className="text-cream font-medium tracking-wide">{istTime}</span>
+              <span className="text-muted text-[11px] uppercase tracking-wider">IST</span>
+              <span className="text-primary/90 text-[10px] font-semibold tracking-wider">· 19:00 DROP</span>
+            </div>
+          )}
+
           {isLoginPage ? (
-            <div className="flex items-center space-x-2 text-xs text-muted">
+            <div className="flex items-center space-x-2 text-xs text-muted font-mono tracking-wider">
               <ShieldCheck className="w-4 h-4 text-primary" />
-              <span>Restricted Staff Portal</span>
+              <span>Restricted Studio Gate</span>
             </div>
           ) : (
-            <>
-              <div className="hidden sm:flex items-center space-x-2 bg-surface-elevated/80 border border-border px-3 py-1.5 rounded-full">
-                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                <span className="text-xs text-gray-300 font-medium truncate max-w-[180px]">
-                  {userEmail || 'Curator (Admin)'}
+            <div className="flex items-center space-x-3">
+              {/* Curator Identity Plaque */}
+              <div className="flex items-center space-x-2.5 bg-surface-container border border-border px-3.5 py-1.5 rounded-full">
+                <div className="w-5 h-5 rounded-full bg-primary/20 border border-primary/40 flex items-center justify-center text-[10px] font-bold text-primary">
+                  {userEmail ? userEmail.charAt(0).toUpperCase() : 'C'}
+                </div>
+                <span className="text-xs text-cream font-medium truncate max-w-[150px]">
+                  {userEmail || 'Master Curator'}
                 </span>
               </div>
 
+              {/* Sign Out Button */}
               <button
                 onClick={handleSignOut}
-                className="flex items-center space-x-1.5 text-xs text-muted hover:text-white px-2.5 py-1.5 rounded-lg border border-border/80 hover:bg-surface-elevated transition"
+                className="flex items-center justify-center p-2 rounded-full text-muted hover:text-cream bg-surface-container hover:bg-surface-elevated border border-border transition"
                 title="Sign out of Curation Desk"
               >
                 <LogOut className="w-3.5 h-3.5" />
-                <span className="hidden md:inline">Sign Out</span>
               </button>
-            </>
+            </div>
           )}
         </div>
       </div>

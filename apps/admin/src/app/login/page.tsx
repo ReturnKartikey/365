@@ -3,7 +3,7 @@
 import React, { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { supabase } from '../../lib/supabase';
-import { Lock, Mail, AlertCircle, ArrowRight, CheckCircle2, ShieldCheck, Loader2 } from 'lucide-react';
+import { Lock, Mail, AlertCircle, ArrowRight, CheckCircle2, ShieldCheck, Loader2, Sparkles, Disc } from 'lucide-react';
 
 function AdminLoginForm() {
   const router = useRouter();
@@ -62,7 +62,7 @@ function AdminLoginForm() {
         return;
       }
 
-      setSuccessMessage('Curator credential verified. Launching control room...');
+      setSuccessMessage('Curator verified. Launching master console...');
       setTimeout(() => {
         router.refresh();
         router.push(redirectPath);
@@ -80,42 +80,46 @@ function AdminLoginForm() {
   };
 
   return (
-    <div className="w-full max-w-md bg-surface border border-border rounded-2xl p-8 shadow-2xl relative overflow-hidden">
-      {/* Subtle decorative glow */}
+    <div className="w-full max-w-md bg-surface border border-border rounded-3xl p-8 shadow-2xl relative overflow-hidden">
+      {/* Warm ambient glow */}
       <div className="absolute -top-24 -right-24 w-48 h-48 bg-primary/10 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute -bottom-24 -left-24 w-48 h-48 bg-amber/10 rounded-full blur-3xl pointer-events-none" />
 
-      <div className="text-center mb-8">
-        <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-surface-elevated border border-border mb-4 text-primary">
-          <ShieldCheck className="w-6 h-6" />
+      <div className="text-center mb-8 relative z-10">
+        <div className="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-surface-container border border-border mb-4 text-primary">
+          <Disc className="w-6 h-6 text-amber animate-spin-slow" />
         </div>
-        <h1 className="font-serif text-3xl font-bold tracking-tight text-white mb-2">
-          365 Curation Desk
+        <div className="text-[10px] font-mono uppercase tracking-[0.22em] text-amber mb-1">
+          Master Audio Desk
+        </div>
+        <h1 className="font-serif text-3xl font-bold tracking-tight text-cream mb-2">
+          365 Curation Studio
         </h1>
-        <p className="text-sm text-muted">
-          Authenticated administrator access required to manage releases, queue, and moderation.
+        <p className="text-xs text-muted max-w-xs mx-auto leading-relaxed">
+          Authorized curator authentication required to manage broadcast drops, queue, and safety.
         </p>
       </div>
 
       {/* Error notification */}
       {errorMessage && (
-        <div className="mb-6 p-4 rounded-xl bg-red-950/40 border border-red-800/60 flex items-start space-x-3 text-red-200 text-sm">
-          <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5 text-red-400" />
-          <span>{errorMessage}</span>
+        <div className="mb-6 p-4 rounded-2xl bg-rose-950/40 border border-rose-800/60 flex items-start space-x-3 text-rose-200 text-xs">
+          <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5 text-rose-400" />
+          <span className="leading-snug">{errorMessage}</span>
         </div>
       )}
 
       {/* Success notification */}
       {successMessage && (
-        <div className="mb-6 p-4 rounded-xl bg-emerald-950/40 border border-emerald-800/60 flex items-start space-x-3 text-emerald-200 text-sm">
-          <CheckCircle2 className="w-5 h-5 flex-shrink-0 mt-0.5 text-emerald-400" />
-          <span>{successMessage}</span>
+        <div className="mb-6 p-4 rounded-2xl bg-emerald-950/40 border border-emerald-800/60 flex items-start space-x-3 text-emerald-200 text-xs">
+          <CheckCircle2 className="w-4 h-4 flex-shrink-0 mt-0.5 text-emerald-400" />
+          <span className="leading-snug">{successMessage}</span>
         </div>
       )}
 
-      <form onSubmit={handleLogin} className="space-y-4">
+      <form onSubmit={handleLogin} className="space-y-4 relative z-10">
         <div>
-          <label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-2">
-            Administrator Email
+          <label className="block text-[11px] font-mono uppercase tracking-wider text-muted font-semibold mb-2">
+            Curator Email
           </label>
           <div className="relative">
             <Mail className="w-4 h-4 text-muted absolute left-3.5 top-3.5 pointer-events-none" />
@@ -124,7 +128,7 @@ function AdminLoginForm() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="curator@365.internal"
-              className="w-full bg-background border border-border rounded-xl pl-10 pr-4 py-2.5 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-primary transition"
+              className="w-full bg-surface-container border border-border rounded-xl pl-10 pr-4 py-2.5 text-xs text-cream placeholder-muted focus:outline-none focus:border-primary transition font-mono"
               autoComplete="email"
               required
             />
@@ -132,8 +136,8 @@ function AdminLoginForm() {
         </div>
 
         <div>
-          <label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-2">
-            Password
+          <label className="block text-[11px] font-mono uppercase tracking-wider text-muted font-semibold mb-2">
+            Access Key / Password
           </label>
           <div className="relative">
             <Lock className="w-4 h-4 text-muted absolute left-3.5 top-3.5 pointer-events-none" />
@@ -142,7 +146,7 @@ function AdminLoginForm() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="••••••••••••"
-              className="w-full bg-background border border-border rounded-xl pl-10 pr-4 py-2.5 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-primary transition"
+              className="w-full bg-surface-container border border-border rounded-xl pl-10 pr-4 py-2.5 text-xs text-cream placeholder-muted focus:outline-none focus:border-primary transition font-mono"
               autoComplete="current-password"
               required
             />
@@ -152,7 +156,7 @@ function AdminLoginForm() {
         <button
           type="submit"
           disabled={isLoading}
-          className="w-full mt-2 py-3 px-4 rounded-xl bg-primary hover:bg-primary-hover text-white font-medium text-sm transition flex items-center justify-center space-x-2 disabled:opacity-50"
+          className="w-full mt-2 py-3 px-4 rounded-xl bg-primary hover:bg-primary-hover text-white font-semibold text-xs tracking-wide transition flex items-center justify-center space-x-2 disabled:opacity-50 shadow-sm"
         >
           {isLoading ? (
             <>
@@ -161,7 +165,7 @@ function AdminLoginForm() {
             </>
           ) : (
             <>
-              <span>Enter Curation Desk</span>
+              <span>Enter Control Studio</span>
               <ArrowRight className="w-4 h-4" />
             </>
           )}
@@ -169,33 +173,33 @@ function AdminLoginForm() {
       </form>
 
       {/* Quick-fill Dev Credentials */}
-      <div className="mt-8 pt-6 border-t border-border">
-        <p className="text-xs uppercase tracking-wider font-semibold text-muted mb-3 text-center">
-          Recognized Admin Accounts
+      <div className="mt-8 pt-6 border-t border-border-subtle relative z-10">
+        <p className="text-[10px] font-mono uppercase tracking-wider text-muted mb-3 text-center">
+          Verified Staff Claims
         </p>
         <div className="flex flex-col gap-2">
           <button
             type="button"
             onClick={() => handleQuickSelect('kartikeynegi2000.work@gmail.com', '365Auth!kartikeywork')}
-            className="w-full text-left p-2.5 rounded-lg bg-surface-elevated hover:bg-border border border-border transition text-xs text-gray-300 flex items-center justify-between"
+            className="w-full text-left p-3 rounded-xl bg-surface-container hover:bg-surface-elevated border border-border-subtle transition text-xs text-muted flex items-center justify-between"
           >
             <div>
-              <span className="font-medium text-white block">kartikeynegi2000.work@gmail.com</span>
-              <span className="text-muted">Kartikey Negi (Work) • Curator Claim</span>
+              <span className="font-semibold text-cream block text-xs">kartikeynegi2000.work@gmail.com</span>
+              <span className="text-[11px] text-muted font-mono">Kartikey Negi (Work) • Curator</span>
             </div>
-            <span className="text-primary text-[11px] font-semibold">Select</span>
+            <span className="text-amber text-[10px] font-mono uppercase tracking-wider font-bold">Select</span>
           </button>
 
           <button
             type="button"
             onClick={() => handleQuickSelect('kartikeynegi2000@gmail.com', '365Auth!kartikeynegi')}
-            className="w-full text-left p-2.5 rounded-lg bg-surface-elevated hover:bg-border border border-border transition text-xs text-gray-300 flex items-center justify-between"
+            className="w-full text-left p-3 rounded-xl bg-surface-container hover:bg-surface-elevated border border-border-subtle transition text-xs text-muted flex items-center justify-between"
           >
             <div>
-              <span className="font-medium text-white block">kartikeynegi2000@gmail.com</span>
-              <span className="text-muted">Kartikey Negi (Personal) • Curator Claim</span>
+              <span className="font-semibold text-cream block text-xs">kartikeynegi2000@gmail.com</span>
+              <span className="text-[11px] text-muted font-mono">Kartikey Negi (Personal) • Curator</span>
             </div>
-            <span className="text-primary text-[11px] font-semibold">Select</span>
+            <span className="text-amber text-[10px] font-mono uppercase tracking-wider font-bold">Select</span>
           </button>
         </div>
       </div>
@@ -208,7 +212,7 @@ export default function AdminLoginPage() {
     <div className="min-h-[75vh] flex items-center justify-center px-4">
       <Suspense
         fallback={
-          <div className="w-full max-w-md bg-surface border border-border rounded-2xl p-8 flex items-center justify-center">
+          <div className="w-full max-w-md bg-surface border border-border rounded-3xl p-8 flex items-center justify-center">
             <Loader2 className="w-6 h-6 animate-spin text-primary" />
           </div>
         }

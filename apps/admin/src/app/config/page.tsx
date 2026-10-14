@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { AdminDataService } from '../../lib/adminData';
 import { AppConfig } from '@365/core';
-import { Clock, Globe, Save, Check, BellRing } from 'lucide-react';
+import { Clock, Globe, Save, Check, BellRing, Sliders, Shield } from 'lucide-react';
 
 export default function ConfigPage() {
   const [config, setConfig] = useState<AppConfig>(AdminDataService.getConfig());
@@ -30,80 +30,76 @@ export default function ConfigPage() {
   };
 
   return (
-    <div className="space-y-8 max-w-3xl">
+    <div className="space-y-10 max-w-3xl">
       {/* Header */}
-      <div className="border-b border-border pb-6">
-        <span className="text-xs font-semibold tracking-widest text-primary uppercase">System Parameters</span>
-        <h1 className="text-4xl font-serif font-bold text-white tracking-tight mt-1">Release Configuration</h1>
-        <p className="text-muted text-sm mt-1">
-          Configure the global moment when the new daily song is unveiled and push notifications are dispatched.
+      <div className="border-b border-border/80 pb-6">
+        <div className="flex items-center space-x-2 text-xs font-mono uppercase tracking-[0.2em] text-primary mb-1.5">
+          <Sliders className="w-3.5 h-3.5 text-amber" />
+          <span>System Parameters</span>
+        </div>
+        <h1 className="text-4xl lg:text-5xl font-serif font-bold text-cream tracking-tight">
+          Ritual Configuration
+        </h1>
+        <p className="text-muted text-sm mt-1.5 max-w-xl leading-relaxed">
+          Configure the synchronized global release hour and timezone for the 365 community drop.
         </p>
       </div>
 
       {savedNotice && (
-        <div className="bg-emerald-950/50 border border-emerald-500/40 text-emerald-200 px-4 py-3 rounded-xl text-sm flex items-center">
-          <Check className="w-4 h-4 mr-2 text-emerald-400" />
-          Ritual release configuration successfully saved to Supabase.
+        <div className="bg-surface-container border border-primary/40 text-cream px-4 py-3 rounded-2xl text-xs flex items-center">
+          <Check className="w-4 h-4 mr-2 text-primary" />
+          Ritual configuration saved successfully to Supabase.
         </div>
       )}
 
       {/* Configuration Form */}
-      <form onSubmit={handleSave} className="bg-surface border border-border p-8 rounded-3xl space-y-6">
+      <form onSubmit={handleSave} className="bg-surface border border-border p-6 sm:p-8 rounded-3xl space-y-8">
         <div>
-          <label className="block text-sm font-semibold text-white mb-2 flex items-center">
-            <Clock className="w-4 h-4 mr-2 text-primary" /> Daily Release Time (24h Format)
+          <label className="block text-xs font-mono uppercase tracking-wider text-muted font-semibold mb-2 flex items-center">
+            <Clock className="w-4 h-4 mr-2 text-primary" /> Daily Drop Time (24h Format)
           </label>
           <input
             type="time"
             value={releaseTime}
             onChange={(e) => setReleaseTime(e.target.value)}
-            className="w-full sm:w-60 bg-surface-elevated border border-border px-4 py-2.5 rounded-xl text-white font-medium text-sm focus:outline-none focus:border-primary"
-            required
+            className="w-full sm:w-64 bg-surface-container border border-border px-4 py-2.5 rounded-xl text-cream font-mono text-sm focus:outline-none focus:border-primary transition"
           />
-          <p className="text-xs text-muted mt-2">
-            Default: 19:00 (7:00 PM). Exactly when the scheduled Cloud Function runs and pushes:
-            <span className="text-gray-300 font-medium block mt-1">"🎧 Today's 365 is here."</span>
+          <p className="text-[11px] text-muted/70 mt-2 leading-relaxed">
+            Default is 19:00 (7:00 PM IST). Automated pg_cron will unveil the next queued track at this precise instant.
           </p>
         </div>
 
         <div>
-          <label className="block text-sm font-semibold text-white mb-2 flex items-center">
-            <Globe className="w-4 h-4 mr-2 text-primary" /> Ritual Timezone
+          <label className="block text-xs font-mono uppercase tracking-wider text-muted font-semibold mb-2 flex items-center">
+            <Globe className="w-4 h-4 mr-2 text-amber" /> Reference Timezone
           </label>
-          <select
+          <input
+            type="text"
             value={timezone}
             onChange={(e) => setTimezone(e.target.value)}
-            className="w-full sm:w-80 bg-surface-elevated border border-border px-4 py-2.5 rounded-xl text-white font-medium text-sm focus:outline-none focus:border-primary"
-          >
-            <option value="Asia/Kolkata">Asia/Kolkata (IST - Indian Standard Time, UTC+5:30)</option>
-            <option value="UTC">UTC (Coordinated Universal Time)</option>
-            <option value="America/New_York">America/New_York (EST / EDT)</option>
-            <option value="Europe/London">Europe/London (GMT / BST)</option>
-            <option value="Europe/Berlin">Europe/Berlin (CET / CEST)</option>
-            <option value="Asia/Tokyo">Asia/Tokyo (JST, UTC+9)</option>
-          </select>
-          <p className="text-xs text-muted mt-2">
-            The target timezone determining the 24-hour cycle boundary.
+            placeholder="Asia/Kolkata"
+            className="w-full sm:w-64 bg-surface-container border border-border px-4 py-2.5 rounded-xl text-cream font-mono text-xs focus:outline-none focus:border-primary transition"
+          />
+          <p className="text-[11px] text-muted/70 mt-2 leading-relaxed">
+            IANA timezone identifier used to anchor calendar day rollover and daily push dispatch.
           </p>
         </div>
 
-        <div className="pt-4 border-t border-border">
-          <div className="text-sm font-semibold text-white mb-2">Graceful Fallback Policy</div>
-          <p className="text-xs text-muted leading-relaxed">
-            If no song is scheduled for a given day, the system invokes the pluggable <span className="text-gray-300 font-mono">SongSelector</span> interface.
-            In v1, it automatically picks the oldest eligible unselected submission from the queue. If the queue is also empty, the system retains the previous day's song and surfaces an admin alert without crashing.
-          </p>
+        <div className="p-4 rounded-2xl bg-surface-container/70 border border-border-subtle flex items-start space-x-3 text-xs text-muted">
+          <BellRing className="w-4 h-4 text-amber shrink-0 mt-0.5" />
+          <div className="leading-relaxed">
+            <span className="font-semibold text-cream block mb-0.5">Automated Ritual Pipeline</span>
+            When the release hour strikes, the Supabase stored procedure marks the song as published and invokes the Expo push dispatcher.
+          </div>
         </div>
 
-        <div className="pt-2">
-          <button
-            type="submit"
-            className="px-6 py-3 rounded-full bg-primary hover:bg-primary-hover text-white text-sm font-semibold transition flex items-center"
-          >
-            <Save className="w-4 h-4 mr-2" />
-            Save Configuration
-          </button>
-        </div>
+        <button
+          type="submit"
+          className="px-6 py-2.5 rounded-full bg-primary hover:bg-primary-hover text-white text-xs font-semibold tracking-wide transition flex items-center shadow-sm"
+        >
+          <Save className="w-4 h-4 mr-2" />
+          Save Configuration
+        </button>
       </form>
     </div>
   );

@@ -1,11 +1,27 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, Suspense } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { AdminDataService } from '../../lib/adminData';
 import { DailySong, Song, Submission } from '@365/core';
-import { Calendar as CalendarIcon, Check, Search, PlusCircle, Sparkles, Loader2 } from 'lucide-react';
+import {
+  Calendar as CalendarIcon,
+  Check,
+  Search,
+  PlusCircle,
+  Play,
+  Pause,
+  ExternalLink,
+  Sparkles,
+  Loader2,
+  Music2,
+  Clock,
+} from 'lucide-react';
 
-export default function SchedulePage() {
+function ScheduleContent() {
+  const searchParams = useSearchParams();
+  const preselectId = searchParams.get('preselect');
+
   const [dailySongs, setDailySongs] = useState<DailySong[]>(AdminDataService.getDailySongs());
   const [submissions, setSubmissions] = useState<Submission[]>(AdminDataService.getSubmissions());
   const [selectedDate, setSelectedDate] = useState(() => {
@@ -16,6 +32,10 @@ export default function SchedulePage() {
   const [catalogResults, setCatalogResults] = useState<Song[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [notification, setNotification] = useState<string | null>(null);
+
+  // Audition audio player
+  const [currentPlayingUri, setCurrentPlayingUri] = useState<string | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
 
   const loadData = async () => {
     try {
@@ -32,7 +52,42 @@ export default function SchedulePage() {
 
   useEffect(() => {
     loadData();
+
+    return () => {
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current = null;
+      }
+    };
   }, []);
+
+  const handleTogglePlay = (previewUrl?: string | null) => {
+    if (!previewUrl) return;
+
+    if (currentPlayingUri === previewUrl) {
+      if (audioRef.current) {
+        audioRef.current.pause();
+      }
+      setCurrentPlayingUri(null);
+      return;
+    }
+
+    if (audioRef.current) {
+      audioRef.current.pause();
+    }
+
+    const audio = new Audio(previewUrl);
+    audioRef.current = audio;
+    setCurrentPlayingUri(previewUrl);
+
+    audio.onended = () => {
+      setCurrentPlayingUri(null);
+    };
+
+    audio.play().catch(() => {
+      setCurrentPlayingUri(null);
+    });
+  };
 
   const handleSearchCatalog = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -65,165 +120,229 @@ export default function SchedulePage() {
       displayName: '365 Editorial',
     });
     await loadData();
-    setNotification(`Scheduled "${song.title}" for ${selectedDate}`);
+    setNotification(`Scheduled editorial release "${song.title}" for ${selectedDate}`);
     setTimeout(() => setNotification(null), 4000);
   };
 
-  // Find if date already has scheduled song
   const existingForDate = dailySongs.find((d) => d.date === selectedDate);
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-10">
       {/* Header */}
-      <div className="border-b border-border pb-6">
-        <span className="text-xs font-semibold tracking-widest text-primary uppercase">Curation Pipeline</span>
-        <h1 className="text-4xl font-serif font-bold text-white tracking-tight mt-1">Calendar & Day Selection</h1>
-        <p className="text-muted text-sm mt-1">
-          Pick future dates on the calendar and assign upcoming ritual tracks from listener submissions or the curated catalog.
+      <div className="border-b border-border/80 pb-6">
+        <div className="flex items-center space-x-2 text-xs font-mono uppercase tracking-[0.2em] text-primary mb-1.5">
+          <CalendarIcon className="w-3.5 h-3.5 text-amber" />
+          <span>Ritual Pipeline & Calendar</span>
+        </div>
+        <h1 className="text-4xl lg:text-5xl font-serif font-bold text-cream tracking-tight">
+          Schedule & Slot Releases
+        </h1>
+        <p className="text-muted text-sm mt-1.5 max-w-xl leading-relaxed">
+          Pre-assign community submissions or editorial master tracks to upcoming daily drops.
         </p>
       </div>
 
       {notification && (
-        <div className="bg-emerald-950/50 border border-emerald-500/40 text-emerald-200 px-4 py-3 rounded-xl text-sm flex items-center">
-          <Check className="w-4 h-4 mr-2 text-emerald-400" />
+        <div className="bg-surface-container border border-primary/40 text-cream px-4 py-3 rounded-2xl text-xs flex items-center">
+          <Check className="w-4 h-4 mr-2 text-primary" />
           {notification}
         </div>
       )}
 
-      {/* Date Selector Row */}
-      <div className="bg-surface border border-border p-6 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      {/* Target Date Bar */}
+      <div className="bg-surface border border-border p-6 rounded-2xl flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div>
-          <label className="block text-xs uppercase tracking-wider text-muted font-medium mb-1">
+          <label className="block text-[11px] font-mono uppercase tracking-wider text-muted font-semibold mb-1.5">
             Target Release Date
           </label>
           <div className="flex items-center space-x-3">
-            <CalendarIcon className="w-5 h-5 text-primary" />
+            <CalendarIcon className="w-4 h-4 text-primary" />
             <input
               type="date"
               value={selectedDate}
               onChange={(e) => setSelectedDate(e.target.value)}
-              className="bg-surface-elevated border border-border px-3.5 py-2 rounded-xl text-white font-medium text-sm focus:outline-none focus:border-primary"
+              className="bg-surface-container border border-border px-3.5 py-2 rounded-xl text-cream font-mono text-xs focus:outline-none focus:border-primary transition"
             />
           </div>
         </div>
 
         {existingForDate ? (
-          <div className="flex items-center space-x-4 bg-surface-elevated p-3 rounded-xl border border-primary/30">
+          <div className="flex items-center space-x-4 bg-surface-container p-3.5 rounded-xl border border-primary/30 max-w-md">
             <img
               src={existingForDate.song.artworkUrl}
               alt=""
               className="w-12 h-12 rounded-lg object-cover"
             />
-            <div>
-              <span className="text-xs font-bold text-primary">Scheduled for {existingForDate.date}</span>
-              <h4 className="text-sm font-semibold text-white">{existingForDate.song.title}</h4>
-              <p className="text-xs text-muted">@{existingForDate.submitterUsername}</p>
+            <div className="min-w-0">
+              <span className="text-[10px] font-mono font-bold text-amber uppercase tracking-wider block">
+                Scheduled for {existingForDate.date}
+              </span>
+              <h4 className="text-sm font-semibold text-cream truncate">{existingForDate.song.title}</h4>
+              <p className="text-xs text-muted truncate">{existingForDate.song.artist} • @{existingForDate.submitterUsername}</p>
             </div>
           </div>
         ) : (
-          <div className="text-sm text-amber-400/90 bg-amber-950/30 border border-amber-500/20 px-4 py-2.5 rounded-xl">
-            No song scheduled yet for {selectedDate}. Choose from below.
+          <div className="text-xs font-mono text-amber bg-amber/10 border border-amber/30 px-4 py-3 rounded-xl flex items-center space-x-2">
+            <Clock className="w-4 h-4 shrink-0" />
+            <span>No song scheduled for {selectedDate}. Choose from below.</span>
           </div>
         )}
       </div>
 
       {/* 2-Column Selection Matrix */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        {/* Column 1: Pick from Community Submissions Queue */}
+        {/* Column 1: Community Submissions */}
         <div className="bg-surface border border-border p-6 rounded-3xl space-y-4">
-          <div className="flex items-center justify-between">
-            <h3 className="text-xl font-serif font-bold text-white">Community Submissions</h3>
-            <span className="text-xs text-muted uppercase">Recommended</span>
+          <div className="flex items-center justify-between border-b border-border-subtle pb-3">
+            <div>
+              <h3 className="text-xl font-serif font-bold text-cream">Community Queue</h3>
+              <p className="text-xs text-muted">Listener recommendations</p>
+            </div>
+            <span className="text-[10px] font-mono uppercase tracking-wider text-amber border border-amber/20 bg-amber/10 px-2 py-0.5 rounded-full">
+              Recommended
+            </span>
           </div>
 
           <div className="space-y-3">
             {submissions
               .filter((s) => s.status === 'queued')
-              .map((sub) => (
-                <div
-                  key={sub.id}
-                  className="bg-surface-elevated border border-border p-4 rounded-2xl flex items-center justify-between hover:border-primary/40 transition"
-                >
-                  <div className="flex items-center space-x-3">
-                    <img
-                      src={sub.song.artworkUrl}
-                      alt=""
-                      className="w-14 h-14 rounded-xl object-cover"
-                    />
-                    <div>
-                      <h4 className="text-sm font-bold text-white">{sub.song.title}</h4>
-                      <p className="text-xs text-gray-300">{sub.song.artist}</p>
-                      <p className="text-xs text-primary mt-1">Submitted by @{sub.submitterUsername}</p>
-                    </div>
-                  </div>
-
-                  <button
-                    onClick={() => handleScheduleFromQueue(sub)}
-                    className="px-3.5 py-1.5 rounded-full text-xs font-semibold bg-primary hover:bg-primary-hover text-white transition flex items-center"
+              .map((sub) => {
+                const isPlayingThis = currentPlayingUri === sub.song.metadata?.previewUrl;
+                return (
+                  <div
+                    key={sub.id}
+                    className="bg-surface-container border border-border hover:border-border-hover p-4 rounded-2xl flex items-center justify-between gap-4 transition group"
                   >
-                    <PlusCircle className="w-3.5 h-3.5 mr-1" />
-                    Select for {selectedDate.slice(5)}
-                  </button>
-                </div>
-              ))}
+                    <div className="flex items-center space-x-3.5 min-w-0">
+                      <div className="relative shrink-0">
+                        <img
+                          src={sub.song.artworkUrl}
+                          alt=""
+                          className="w-13 h-13 rounded-xl object-cover bg-surface-elevated"
+                        />
+                        {sub.song.metadata?.previewUrl && (
+                          <button
+                            onClick={() => handleTogglePlay(sub.song.metadata?.previewUrl)}
+                            className={`absolute inset-0 m-auto w-7 h-7 rounded-full bg-black/75 border border-white/20 text-cream flex items-center justify-center transition ${
+                              isPlayingThis ? 'opacity-100 scale-105 text-amber' : 'opacity-0 group-hover:opacity-100'
+                            }`}
+                          >
+                            {isPlayingThis ? <Pause className="w-3.5 h-3.5 fill-amber" /> : <Play className="w-3.5 h-3.5 fill-cream ml-0.5" />}
+                          </button>
+                        )}
+                      </div>
+
+                      <div className="min-w-0">
+                        <h4 className="text-xs font-semibold text-cream truncate">{sub.song.title}</h4>
+                        <p className="text-[11px] text-muted truncate">{sub.song.artist}</p>
+                        <p className="text-[10px] font-mono text-primary mt-0.5">@{sub.submitterUsername}</p>
+                      </div>
+                    </div>
+
+                    <button
+                      onClick={() => handleScheduleFromQueue(sub)}
+                      className="px-3.5 py-1.5 rounded-full text-xs font-semibold bg-primary hover:bg-primary-hover text-white transition flex items-center shrink-0 shadow-sm"
+                    >
+                      <PlusCircle className="w-3.5 h-3.5 mr-1" />
+                      Slot {selectedDate.slice(5)}
+                    </button>
+                  </div>
+                );
+              })}
           </div>
         </div>
 
-        {/* Column 2: Search Spotify / Catalog Directly */}
+        {/* Column 2: Direct Spotify Catalog Search */}
         <div className="bg-surface border border-border p-6 rounded-3xl space-y-4">
-          <div className="flex items-center justify-between">
-            <h3 className="text-xl font-serif font-bold text-white">Curator Catalog Search</h3>
-            <span className="text-xs text-muted uppercase">Direct</span>
+          <div className="flex items-center justify-between border-b border-border-subtle pb-3">
+            <div>
+              <h3 className="text-xl font-serif font-bold text-cream">Spotify Master Search</h3>
+              <p className="text-xs text-muted">Editorial direct curation</p>
+            </div>
+            <span className="text-[10px] font-mono uppercase tracking-wider text-muted border border-border px-2 py-0.5 rounded-full">
+              Editorial
+            </span>
           </div>
 
           <form onSubmit={handleSearchCatalog} className="flex gap-2">
             <input
               type="text"
-              placeholder="Search Spotify catalog by title or artist..."
+              placeholder="Search Spotify by song, artist, album..."
               value={searchCatalogQuery}
               onChange={(e) => setSearchCatalogQuery(e.target.value)}
-              className="flex-1 bg-surface-elevated border border-border px-4 py-2.5 rounded-full text-sm text-white placeholder-muted focus:outline-none focus:border-primary"
+              className="flex-1 bg-surface-container border border-border px-4 py-2 rounded-xl text-xs text-cream placeholder-muted focus:outline-none focus:border-primary transition"
             />
             <button
               type="submit"
               disabled={isSearching}
-              className="px-5 py-2.5 rounded-full bg-surface-elevated border border-border text-white text-sm font-medium hover:border-primary transition flex items-center"
+              className="px-4 py-2 rounded-xl bg-surface-elevated hover:bg-surface-high border border-border text-xs font-semibold text-cream transition flex items-center"
             >
-              <Search className="w-4 h-4 mr-1.5" />
-              Search
+              {isSearching ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Search className="w-3.5 h-3.5" />}
             </button>
           </form>
 
           {/* Search Results */}
-          <div className="space-y-3 max-h-96 overflow-y-auto pr-1">
-            {catalogResults.map((song) => (
-              <div
-                key={song.id}
-                className="bg-surface-elevated border border-border p-3.5 rounded-2xl flex items-center justify-between"
-              >
-                <div className="flex items-center space-x-3">
-                  <img
-                    src={song.artworkUrl}
-                    alt=""
-                    className="w-12 h-12 rounded-xl object-cover"
-                  />
-                  <div>
-                    <h4 className="text-sm font-semibold text-white">{song.title}</h4>
-                    <p className="text-xs text-gray-300">{song.artist}</p>
-                  </div>
-                </div>
-
-                <button
-                  onClick={() => handleScheduleFromCatalog(song)}
-                  className="px-3.5 py-1.5 rounded-full text-xs font-semibold bg-surface border border-border hover:border-primary text-gray-200 transition"
+          <div className="space-y-3">
+            {catalogResults.map((song) => {
+              const isPlayingThis = currentPlayingUri === song.metadata?.previewUrl;
+              return (
+                <div
+                  key={song.id}
+                  className="bg-surface-container border border-border hover:border-border-hover p-4 rounded-2xl flex items-center justify-between gap-4 transition group"
                 >
-                  Schedule
-                </button>
-              </div>
-            ))}
+                  <div className="flex items-center space-x-3.5 min-w-0">
+                    <div className="relative shrink-0">
+                      <img
+                        src={song.artworkUrl}
+                        alt=""
+                        className="w-13 h-13 rounded-xl object-cover bg-surface-elevated"
+                      />
+                      {song.metadata?.previewUrl && (
+                        <button
+                          onClick={() => handleTogglePlay(song.metadata?.previewUrl)}
+                          className={`absolute inset-0 m-auto w-7 h-7 rounded-full bg-black/75 border border-white/20 text-cream flex items-center justify-center transition ${
+                            isPlayingThis ? 'opacity-100 scale-105 text-amber' : 'opacity-0 group-hover:opacity-100'
+                          }`}
+                        >
+                          {isPlayingThis ? <Pause className="w-3.5 h-3.5 fill-amber" /> : <Play className="w-3.5 h-3.5 fill-cream ml-0.5" />}
+                        </button>
+                      )}
+                    </div>
+
+                    <div className="min-w-0">
+                      <h4 className="text-xs font-semibold text-cream truncate">{song.title}</h4>
+                      <p className="text-[11px] text-muted truncate">{song.artist}</p>
+                      <p className="text-[10px] font-mono text-muted/70 mt-0.5">{song.album}</p>
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={() => handleScheduleFromCatalog(song)}
+                    className="px-3.5 py-1.5 rounded-full text-xs font-semibold bg-surface-elevated hover:bg-primary text-cream hover:text-white border border-border transition flex items-center shrink-0"
+                  >
+                    <PlusCircle className="w-3.5 h-3.5 mr-1" />
+                    Slot
+                  </button>
+                </div>
+              );
+            })}
           </div>
         </div>
       </div>
     </div>
+  );
+}
+
+export default function SchedulePage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="p-16 text-center text-muted">
+          <Loader2 className="w-6 h-6 animate-spin mx-auto text-primary" />
+        </div>
+      }
+    >
+      <ScheduleContent />
+    </Suspense>
   );
 }
